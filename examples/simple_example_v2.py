@@ -3,7 +3,7 @@ import sys
 import cv2
 import pygame
 import numpy as np
-
+import mouse
 pygame.init()
 pygame.font.init()
 
@@ -63,11 +63,11 @@ while running:
                 running = False
 
 
-    # Generate new random position for the cursor
+    # Generate new random position for the cursor througth gestures frames
     ret, frame = cap.read()
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    calibrate = (iterator <= 25) # calibrate 25 points
+    calibrate = (iterator <= 50) # calibrate 25 points
 
     event, calibration = gestures.step(frame, calibrate, screen_width, screen_height, context="my_context")
 
@@ -97,7 +97,11 @@ while running:
             text_square = text_surface.get_rect(center=calibration.point)
             screen.blit(text_surface, text_square)
         else:
-            pass
+            cursor_x, cursor_y = event.point[0], event.point[1]
+            fixation = event.fixation
+            print("X: " +  str(cursor_x))
+            print("Y: " + str(cursor_y))
+            mouse.move(cursor_x, cursor_y, absolute=True, duration=0.01)
         if gestures.whichAlgorithm(context="my_context") == "Ridge":
             pygame.draw.circle(screen, RED, event.point, 50)
         if gestures.whichAlgorithm(context="my_context") == "LassoCV":

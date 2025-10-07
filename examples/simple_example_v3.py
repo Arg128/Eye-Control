@@ -12,6 +12,9 @@ screen_info = pygame.display.Info()
 screen_width = screen_info.current_w
 screen_height = screen_info.current_h
 
+print(screen_width)
+print(screen_height)
+
 # Set up the screen
 screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("EyeGestures v3 example")
@@ -40,7 +43,7 @@ targets = [
 ]
 
 calibration_map = np.column_stack([xx.ravel(), yy.ravel()])
-n_points = min(len(calibration_map),25)
+n_points = min(len(calibration_map),50)
 np.random.shuffle(calibration_map)
 gestures.uploadCalibrationMap(calibration_map,context="my_context")
 gestures.setFixation(1.0)
