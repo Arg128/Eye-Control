@@ -7,6 +7,8 @@ import mouse
 import numpy as np
 import os
 
+context_tag = "eye_Tracker"
+
 gestures = EyeGestures_v2()
 cap = VideoCapture(0)
 calibrate = True
@@ -17,7 +19,7 @@ xx, yy = np.meshgrid(x, y)
 
 calibration_map = np.column_stack([xx.ravel(), yy.ravel()])
 np.random.shuffle(calibration_map)
-gestures.uploadCalibrationMap(calibration_map, context="eye_Tracker")
+gestures.uploadCalibrationMap(calibration_map, context=context_tag)
 gestures.setClassicalImpact(2)
 gestures.setFixation(1.0)
 
@@ -43,8 +45,8 @@ BLUE = (100, 0, 255)
 GREEN = (0, 255, 0)
 WHITE = (255, 255, 255)
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "calibration_model_eye_tracker.pkl")
-max_points = 35
+MODEL_PATH = os.path.join(os.path.dirname(__file__), ".pkl/calibration_model_eye_tracker.pkl")
+max_points = 25
 saved = False
 
 running = True
@@ -70,7 +72,7 @@ while running:
     calibrate = (iterator <= max_points)
 
     # llamada única a step con el frame correcto
-    event, calibration = gestures.step(frame_rgb, calibrate, screen_width, screen_height, context="eye_Tracker")
+    event, calibration = gestures.step(frame_rgb, calibrate, screen_width, screen_height, context=context_tag)
 
     # preparar imagen para mostrar en Pygame
     try:
@@ -85,7 +87,7 @@ while running:
     if event is None and calibration is None:
         # sin datos válidos este frame
         if surf is not None:
-            screen.blit(surf, (0, 0))
+            screen.blit(surf, (200, 0))
         pygame.display.flip()
         clock.tick(60)
         continue
@@ -97,7 +99,7 @@ while running:
 
     # dibujado UI
     if surf is not None:
-        screen.blit(surf, (0, 0))
+        screen.blit(surf, (200, 0))
 
     my_font = pygame.font.SysFont('Comic Sans MS', 30)
     if event is not None:
@@ -118,15 +120,15 @@ while running:
     else:
         # mostrar el punto estimado en modo tracking
         if event is not None:
-            pygame.draw.circle(screen, RED if gestures.whichAlgorithm(context="eye_Tracker") == "Ridge" else BLUE, (int(event.point[0]), int(event.point[1])), 20)
-            alg_text = my_font.render(gestures.whichAlgorithm(context="eye_Tracker"), False, (0, 0, 0))
+            pygame.draw.circle(screen, RED if gestures.whichAlgorithm(context=context_tag) == "Ridge" else BLUE, (int(event.point[0]), int(event.point[1])), 20)
+            alg_text = my_font.render(gestures.whichAlgorithm(context=context_tag), False, (0, 0, 0))
             screen.blit(alg_text, (int(event.point[0]), int(event.point[1])))
 
     pygame.display.flip()
 
     # cuando terminamos la calibración, guardamos modelo y salimos
     if iterator > max_points and not saved:
-        model_bytes = gestures.saveModel(context="eye_Tracker")
+        model_bytes = gestures.saveModel(context=context_tag)
         if model_bytes:
             with open(MODEL_PATH, "wb") as f:
                 f.write(model_bytes)

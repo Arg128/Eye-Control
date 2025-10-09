@@ -85,6 +85,14 @@ python3 examples/simple_example_v2.py
 python3 examples/simple_example.py [legacy tracker, will become obsolete]
 ```
 
+### WARNING:
+
+Now to set a save data calibration system its needed an own settings be placed in libraries. 
+Read more info in 
+´´´
+examples/README.md
+´´´ 
+
 ### 🔧 Build your own:
 
 #### Using EyeGesture Engine V3 - Faster smaller better:
