@@ -18,8 +18,8 @@ user32 = ctypes.windll.user32
 screen_w = user32.GetSystemMetrics(0)
 screen_h = user32.GetSystemMetrics(1)
 
-screen_w = 1920
-screen_h = 1080
+#   screen_w = 1920
+#   screen_h = 1080
 
 print(f"Resolución de pantalla: {screen_w}x{screen_h}")
 
@@ -35,6 +35,7 @@ if hasattr(gestures, "addContext"):
         print("Has entrado aquí jijiiji")
     except Exception:
         # fallback to uploadCalibrationMap
+        print("No está el mapa de calibración.")
         gestures.uploadCalibrationMap(np.array([[0.5, 0.5]]), context=context_tag)
 else:
     gestures.uploadCalibrationMap(np.array([[0.5, 0.5]]), context=context_tag)

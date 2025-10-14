@@ -59,8 +59,6 @@ while running:
                 running = False
 
     ret, frame = cap.read()
-    if not ret:
-        continue
 
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     frame = np.flip(frame, axis=1)
@@ -68,6 +66,8 @@ while running:
     calibrate = (iterator <= n_points)
     gevent, cevent = gestures.step(frame, calibrate, screen_width, screen_height, context="v2calib")
 
+    if gevent is None:
+        continue
     screen.fill(BLACK)
 
     # Show camera subframe if available

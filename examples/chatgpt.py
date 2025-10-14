@@ -1,10 +1,10 @@
 import cv2
 import time
-from eyeGestures import EyeGestures_v2
+from eyeGestures import EyeGestures_v3
 from eyeGestures.utils import VideoCapture
 
 # Inicializa
-gestures = EyeGestures_v2()
+gestures = EyeGestures_v3()
 cap = VideoCapture(0)
 
 # Resolución de pantalla virtual (puedes ajustar a la real)

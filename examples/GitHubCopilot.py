@@ -1,4 +1,5 @@
 # ...existing code...
+import math
 from eyeGestures.utils import VideoCapture
 from eyeGestures import EyeGestures_v2
 import cv2
@@ -6,6 +7,7 @@ import pygame
 import mouse
 import numpy as np
 import os
+import sys
 
 context_tag = "eye_Tracker"
 
@@ -13,9 +15,16 @@ gestures = EyeGestures_v2()
 cap = VideoCapture(0)
 calibrate = True
 
+import numpy as np
+
 x = np.arange(0, 1.1, 0.2)
 y = np.arange(0, 1.1, 0.2)
 xx, yy = np.meshgrid(x, y)
+
+print("X: ", x)
+print("Y: ", y)
+print("El Ye", yy)
+print("El Xx", xx)
 
 calibration_map = np.column_stack([xx.ravel(), yy.ravel()])
 np.random.shuffle(calibration_map)
@@ -31,8 +40,14 @@ prev_y = 0
 pygame.init()
 pygame.font.init()
 clock = pygame.time.Clock()
-screen_width = 1920
-screen_height = 1080
+
+# obtener resolución de pantalla en Windows
+import ctypes
+user32 = ctypes.windll.user32
+screen_width = user32.GetSystemMetrics(0)
+screen_height = user32.GetSystemMetrics(1)
+#   screen_width = 1920
+#   screen_height = 1080
 screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("EyeGestures v2 - Calibración")
 font_size = 48
@@ -46,7 +61,7 @@ GREEN = (0, 255, 0)
 WHITE = (255, 255, 255)
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), ".pkl/calibration_model_eye_tracker.pkl")
-max_points = 25
+max_points = 35
 saved = False
 
 running = True
@@ -92,8 +107,8 @@ while running:
         clock.tick(60)
         continue
 
-    # mover mouse si hay evento de tracking (cuando no se está dibujando calibración)
-    if event and not calibrate:
+    # mover mouse si no hay evento de tracking (cuando se está dibujando calibración)
+    if event and calibrate:
         cursor_x, cursor_y = event.point[0], event.point[1]
         mouse.move(cursor_x, cursor_y, absolute=True, duration=0.01)
 
@@ -111,10 +126,10 @@ while running:
         if calibration.point[0] != prev_x or calibration.point[1] != prev_y:
             iterator += 1
             prev_x, prev_y = calibration.point[0], calibration.point[1]
-        calibration_radius = max(1, int(calibration.acceptance_radius) - 7)
+        calibration_radius = max(1, (int(calibration.acceptance_radius) - (10 * math.floor(iterator / 10))))
         fit_point = (int(calibration.point[0]), int(calibration.point[1]))
         pygame.draw.circle(screen, GREEN, fit_point, calibration_radius)
-        text_surface = bold_font.render(f"{iterator}/{max_points}", True, WHITE)
+        text_surface = bold_font.render(f"{iterator}/{max_points} : {calibration_radius}", True, WHITE)
         text_square = text_surface.get_rect(center=calibration.point)
         screen.blit(text_surface, text_square)
     else:
@@ -142,7 +157,8 @@ while running:
 
 # limpieza
 try:
-    cap.release()
+    cap.close()
+    sys.exit("Salida del todo el programa python")
 except Exception:
     pass
 pygame.quit()

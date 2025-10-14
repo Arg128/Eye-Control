@@ -80,7 +80,7 @@ while running:
     frame = np.flip(frame, axis=1)
     calibrate = (iterator <= n_points) # calibrate 25 points
     event, calibration = gestures.step(frame, calibrate, screen_width, screen_height, context="my_context")
-
+    
     if event is None:
         continue
 
