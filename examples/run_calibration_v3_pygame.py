@@ -1,5 +1,6 @@
 import os
 import sys
+import warnings
 import cv2
 import numpy as np
 import pygame
@@ -27,7 +28,6 @@ xx, yy = np.meshgrid(x, y)
 calibration_map = np.column_stack([xx.ravel(), yy.ravel()])
 np.random.shuffle(calibration_map)
 gestures.uploadCalibrationMap(calibration_map, context=context_tag)
-gestures.setFixation(1.0)
 
 # Try to ensure context exists (avoid KeyError on step)
 if hasattr(gestures, "addContext"):
@@ -57,8 +57,15 @@ MODEL_PATH = os.path.join(MODEL_DIR, "calibration_model_v3.pkl")
 iterator = 0
 prev_x = prev_y = 0
 max_points = min(len(calibration_map), 50)
+#   max_points = 70
 saved = False
 running = True
+
+CHANGERADIO = True
+
+print("Quick bias calibration: mira al centro de la pantalla y pulsa Enter")
+#input("Pulsa Enter cuando estés listo...")
+# captura predicciones durante 2 segundos o hasta N muestras válidas
 
 while running:
     for e in pygame.event.get():
@@ -73,15 +80,16 @@ while running:
         continue
 
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    #   frame_rgb = np.flip(frame_rgb, axis=1)
     calibrate = (iterator <= max_points)
 
     # single step call
     event, calibration = gestures.step(frame_rgb, calibrate, screen_width, screen_height, context=context_tag)
-
     # prepare small preview
     surf = None
     try:
-        preview = np.rot90(frame_rgb)
+        frame_rgb = np.rot90(frame_rgb)
+        preview = frame_rgb
         surf = pygame.surfarray.make_surface(preview)
         surf = pygame.transform.scale(surf, (400, 400))
     except Exception:
@@ -97,7 +105,45 @@ while running:
         clock.tick(60)
         continue
 
-    # during calibration show target and progress
+    # mover mouse si no hay evento de tracking (cuando se está dibujando calibración)
+    if event and calibrate:
+        cursor_x, cursor_y = event.point[0], event.point[1]
+        mouse.move(cursor_x, cursor_y, absolute=True, duration=0.01)
+
+    if calibration is not None and calibrate:
+        if calibration.point[0] != prev_x or calibration.point[1] != prev_y:
+            iterator += 1
+            prev_x, prev_y = calibration.point[0], calibration.point[1]
+            CHANGERADIO = True
+            ##
+        cal_rad = max(1, int(calibration.acceptance_radius) - 8)
+        pygame.draw.circle(screen, (0, 255, 0), (int(calibration.point[0]), int(calibration.point[1])), cal_rad)
+        txt = bold_font.render(f"{iterator}/{max_points} \n {gestures.whichAlgorithm(context_tag)}", True, (255, 255, 255))
+        rect = txt.get_rect(center=calibration.point)
+        screen.blit(txt, rect)
+            # --- reduce calibration radii gradually (coarse -> fine) ---
+                # gestures.clb[context_tag] existe en muchas implementaciones
+        try:
+            if (iterator % 7) == 0 and CHANGERADIO:  # cada 2 puntos ajusta radios
+                CHANGERADIO = False
+                clb_dict = getattr(gestures, "clb", None)
+                if clb_dict and context_tag in clb_dict:
+                    clb_obj = clb_dict[context_tag]
+                    print(clb_obj.calibration_radius)
+                    # parámetros: factor de reducción y límite mínimo
+                    reduction_factor = 0.90   # reducir 10% cada punto completado
+                    min_cal_radius = 50       # píxeles (ajusta según pantalla)
+                    min_acc_radius = 10
+                    # actualizar radios (si las propiedades existen)
+                    if hasattr(clb_obj, "calibration_radius"):
+                        clb_obj.calibration_radius = max(min_cal_radius,
+                                                            int(clb_obj.calibration_radius * reduction_factor))
+                    if hasattr(clb_obj, "acceptance_radius"):
+                        clb_obj.acceptance_radius = max(min_acc_radius,
+                                                        int(clb_obj.acceptance_radius * reduction_factor))
+        except Exception:
+            pass
+        """     # during calibration show target and progress
     if calibration is not None and calibrate:
         if calibration.point[0] != prev_x or calibration.point[1] != prev_y:
             iterator += 1
@@ -106,7 +152,20 @@ while running:
         pygame.draw.circle(screen, (0, 255, 0), (int(calibration.point[0]), int(calibration.point[1])), cal_rad)
         txt = bold_font.render(f"{iterator}/{max_points}", True, (255, 255, 255))
         rect = txt.get_rect(center=calibration.point)
-        screen.blit(txt, rect)
+        screen.blit(txt, rect) """
+        #BETA
+        """         clb_obj = clb_dict[context_tag]
+        # parámetros: factor de reducción y límite mínimo
+        reduction_factor = 0.90   # reducir 10% cada punto completado
+        min_cal_radius = 50       # píxeles (ajusta según pantalla)
+        min_acc_radius = 10
+        # actualizar radios (si las propiedades existen)
+        if hasattr(clb_obj, "calibration_radius"):
+            clb_obj.calibration_radius = max(min_cal_radius,
+                                                int(clb_obj.calibration_radius * reduction_factor))
+        if hasattr(clb_obj, "acceptance_radius"):
+            clb_obj.acceptance_radius = max(min_acc_radius,
+                                            int(clb_obj.acceptance_radius * reduction_factor)) """
     else:
         # tracking: move mouse using predicted point
         if event is not None:
@@ -125,16 +184,18 @@ while running:
             with open(MODEL_PATH, "wb") as f:
                 f.write(model_bytes)
         saved = True
-        pygame.quit()
-        running = False
-        break
+        ##  pygame.quit()
+        ##  running = False
+        ##  break
 
     clock.tick(60)
 
 # cleanup
 try:
-    cap.release()
+    cap.close()
+    sys.exit("Salida del todo el programa python")
+    pygame.quit()
 except Exception:
-    pass
-pygame.quit()
+    warnings.warn("No se pudo cerrar de forma correcta")
+
 print("Calibración finalizada. Modelo guardado en:", MODEL_PATH)

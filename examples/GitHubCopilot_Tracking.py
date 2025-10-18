@@ -32,7 +32,7 @@ gestures = EyeGestures_v2()
 if hasattr(gestures, "addContext"):
     try:
         gestures.addContext(context_tag)
-        print("Has entrado aquí jijiiji")
+        print("Has entrado aquí, ja")
     except Exception:
         # fallback to uploadCalibrationMap
         print("No está el mapa de calibración.")

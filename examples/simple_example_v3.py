@@ -46,7 +46,7 @@ calibration_map = np.column_stack([xx.ravel(), yy.ravel()])
 n_points = min(len(calibration_map),50)
 np.random.shuffle(calibration_map)
 gestures.uploadCalibrationMap(calibration_map,context="my_context")
-gestures.setFixation(1.0)
+#   gestures.setFixation(1.0)
 # Initialize Pygame
 # Set up colors
 RED = (255, 0, 100)
