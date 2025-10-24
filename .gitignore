@@ -16,3 +16,33 @@ node_modules/
 ## Guarda tus propios datos aquí, tu calibración debe de ser unica :)
 
 examples/.pkl/*
+
+# React Native Mobile
+mobile/node_modules/
+mobile/npm-debug.log
+mobile/yarn-error.log
+
+# Android
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/.gradle/
+mobile/android/app/.cxx/
+mobile/android/local.properties
+mobile/android/**/*.apk
+mobile/android/**/*.ap_
+mobile/android/**/*.aab
+
+# iOS
+mobile/ios/Pods/
+mobile/ios/build/
+mobile/ios/**/*.ipa
+
+# Metro
+mobile/.metro-health-check*
+
+# React Native misc
+mobile/.DS_Store
+mobile/**/*.log
+mobile/**/*.swp
+mobile/**/*.swo
+mobile/**/*~
