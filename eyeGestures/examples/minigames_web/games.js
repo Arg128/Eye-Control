@@ -430,12 +430,168 @@ class BubblePopGame extends Game {
     }
 }
 
+// 4. Snake Eye Game
+class SnakeEyeGame extends Game {
+    constructor(canvas) {
+        super(canvas, 'Snake Eye');
+        this.snake = [{ x: 300, y: 300 }];
+        this.direction = { x: 0, y: 0 };
+        this.food = { x: 0, y: 0 };
+        this.gridSize = 20;
+        this.lastMove = 0;
+        this.moveInterval = 150;
+        this.gazeThreshold = 100; // Píxeles desde el borde para cambiar dirección
+    }
+
+    start() {
+        super.start();
+        this.canvas.width = 1200;
+        this.canvas.height = 700;
+        this.spawnFood();
+        
+        this.gazeListener = (data) => {
+            this.updateDirection(data.x - this.canvas.offsetLeft, data.y - this.canvas.offsetTop);
+        };
+        eyeTracking.addListener(this.gazeListener);
+    }
+
+    updateDirection(gazeX, gazeY) {
+        const canvas = this.canvas;
+        
+        // Determinar dirección basada en la posición de la mirada
+        if (gazeX < this.gazeThreshold) {
+            this.direction = { x: -1, y: 0 }; // Izquierda
+        } else if (gazeX > canvas.width - this.gazeThreshold) {
+            this.direction = { x: 1, y: 0 }; // Derecha
+        } else if (gazeY < this.gazeThreshold) {
+            this.direction = { x: 0, y: -1 }; // Arriba
+        } else if (gazeY > canvas.height - this.gazeThreshold) {
+            this.direction = { x: 0, y: 1 }; // Abajo
+        }
+    }
+
+    spawnFood() {
+        const maxX = Math.floor(this.canvas.width / this.gridSize);
+        const maxY = Math.floor(this.canvas.height / this.gridSize);
+        
+        this.food = {
+            x: Math.floor(Math.random() * maxX) * this.gridSize,
+            y: Math.floor(Math.random() * maxY) * this.gridSize
+        };
+        
+        // Asegurar que la comida no aparezca en el cuerpo de la serpiente
+        for (let segment of this.snake) {
+            if (segment.x === this.food.x && segment.y === this.food.y) {
+                this.spawnFood();
+                return;
+            }
+        }
+    }
+
+    update() {
+        const now = Date.now();
+        if (now - this.lastMove < this.moveInterval) return;
+        
+        this.lastMove = now;
+        
+        // Mover la serpiente
+        const head = { ...this.snake[0] };
+        head.x += this.direction.x * this.gridSize;
+        head.y += this.direction.y * this.gridSize;
+        
+        // Verificar colisiones con bordes
+        if (head.x < 0 || head.x >= this.canvas.width || 
+            head.y < 0 || head.y >= this.canvas.height) {
+            this.gameOver();
+            return;
+        }
+        
+        // Verificar colisiones con el cuerpo
+        for (let segment of this.snake) {
+            if (head.x === segment.x && head.y === segment.y) {
+                this.gameOver();
+                return;
+            }
+        }
+        
+        this.snake.unshift(head);
+        
+        // Verificar si comió comida
+        if (head.x === this.food.x && head.y === this.food.y) {
+            this.score += 10;
+            this.updateScore();
+            this.spawnFood();
+        } else {
+            this.snake.pop();
+        }
+    }
+
+    draw() {
+        this.clear();
+        
+        // Fondo
+        this.ctx.fillStyle = '#111827';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Dibujar serpiente
+        this.snake.forEach((segment, index) => {
+            if (index === 0) {
+                // Cabeza
+                this.ctx.fillStyle = '#22c55e';
+            } else {
+                // Cuerpo
+                this.ctx.fillStyle = '#16a34a';
+            }
+            
+            this.ctx.fillRect(segment.x, segment.y, this.gridSize - 2, this.gridSize - 2);
+            
+            // Borde
+            this.ctx.strokeStyle = '#15803d';
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(segment.x, segment.y, this.gridSize - 2, this.gridSize - 2);
+        });
+        
+        // Dibujar comida
+        this.ctx.fillStyle = '#ef4444';
+        this.ctx.beginPath();
+        this.ctx.arc(
+            this.food.x + this.gridSize / 2, 
+            this.food.y + this.gridSize / 2, 
+            this.gridSize / 2 - 2, 
+            0, 
+            Math.PI * 2
+        );
+        this.ctx.fill();
+        
+        // Dibujar instrucciones
+        this.ctx.fillStyle = '#f3f4f6';
+        this.ctx.font = 'bold 20px Arial';
+        this.ctx.fillText('Mira hacia los bordes para cambiar dirección', 20, 30);
+        this.ctx.fillText(`Puntuación: ${this.score}`, 20, 60);
+    }
+
+    gameOver() {
+        this.stop();
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.ctx.fillStyle = '#ef4444';
+        this.ctx.font = 'bold 48px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('¡Game Over!', this.canvas.width / 2, this.canvas.height / 2 - 50);
+        
+        this.ctx.font = 'bold 36px Arial';
+        this.ctx.fillStyle = '#22c55e';
+        this.ctx.fillText(`Puntuación Final: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
+    }
+}
+
 // Game Registry
 const games = {
     'aimTrainer': AimTrainerGame,
     'memoryGame': MemoryGame,
     'bubblePop': BubblePopGame,
-    'snakeGame': null, // TODO
+    'snakeGame': SnakeEyeGame,
     'reactionTest': null, // TODO
     'focusFlow': null // TODO
 };

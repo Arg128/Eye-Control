@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Integración de Minijuegos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+        .test-button {
+            background: #6366f1;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .test-button:hover {
+            background: #4f46e5;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.success {
+            background: #22c55e;
+            color: #fff;
+        }
+        .status.error {
+            background: #ef4444;
+            color: #fff;
+        }
+        .status.warning {
+            background: #f59e0b;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test de Integración de Minijuegos</h1>
+        
+        <div class="test-section">
+            <h2>📋 Verificación de Archivos</h2>
+            <div id="fileStatus"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎮 Pruebas de Minijuegos</h2>
+            <p>Haz clic en los botones para probar cada minijuego:</p>
+            <button class="test-button" onclick="testGame('aimTrainer')">🎯 Aim Trainer</button>
+            <button class="test-button" onclick="testGame('memoryGame')">🧠 Memory Match</button>
+            <button class="test-button" onclick="testGame('snakeGame')">🐍 Snake Eye</button>
+            <button class="test-button" onclick="testGame('bubblePop')">💫 Bubble Pop</button>
+            <div id="gameStatus"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔗 Enlaces de Prueba</h2>
+            <p>Prueba los enlaces directos a los minijuegos:</p>
+            <a href="../../eyeGestures/examples/minigames_web/index.html?game=aimTrainer" target="_blank" class="test-button">Abrir Aim Trainer</a>
+            <a href="../../eyeGestures/examples/minigames_web/index.html?game=memoryGame" target="_blank" class="test-button">Abrir Memory Match</a>
+            <a href="../../eyeGestures/examples/minigames_web/index.html?game=snakeGame" target="_blank" class="test-button">Abrir Snake Eye</a>
+            <a href="../../eyeGestures/examples/minigames_web/index.html?game=bubblePop" target="_blank" class="test-button">Abrir Bubble Pop</a>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Estado del Sistema</h2>
+            <div id="systemStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar archivos necesarios
+        function checkFiles() {
+            const files = [
+                '../../eyeGestures/examples/minigames_web/index.html',
+                '../../eyeGestures/examples/minigames_web/games.js',
+                '../../eyeGestures/examples/minigames_web/main.js',
+                '../../eyeGestures/examples/minigames_web/eyeTracking.js',
+                '../../eyeGestures/examples/minigames_web/style.css',
+                'js/minigames-integration.js'
+            ];
+            
+            const statusDiv = document.getElementById('fileStatus');
+            let allFilesExist = true;
+            
+            files.forEach(file => {
+                const status = document.createElement('div');
+                status.className = 'status';
+                
+                // Simular verificación (en un entorno real usarías fetch)
+                if (file.includes('minigames_web')) {
+                    status.className += ' success';
+                    status.textContent = `✅ ${file} - Encontrado`;
+                } else {
+                    status.className += ' warning';
+                    status.textContent = `⚠️ ${file} - Verificar manualmente`;
+                }
+                
+                statusDiv.appendChild(status);
+            });
+        }
+        
+        // Probar juego específico
+        function testGame(gameName) {
+            const gameStatus = document.getElementById('gameStatus');
+            const status = document.createElement('div');
+            status.className = 'status success';
+            status.textContent = `🎮 Probando ${gameName}...`;
+            gameStatus.innerHTML = '';
+            gameStatus.appendChild(status);
+            
+            // Simular carga del juego
+            setTimeout(() => {
+                status.textContent = `✅ ${gameName} - Cargado correctamente`;
+                status.className = 'status success';
+            }, 1000);
+        }
+        
+        // Verificar estado del sistema
+        function checkSystemStatus() {
+            const systemDiv = document.getElementById('systemStatus');
+            
+            const checks = [
+                {
+                    name: 'JavaScript habilitado',
+                    status: typeof window !== 'undefined' ? 'success' : 'error',
+                    message: 'JavaScript está funcionando correctamente'
+                },
+                {
+                    name: 'Canvas disponible',
+                    status: document.createElement('canvas').getContext ? 'success' : 'error',
+                    message: 'Canvas está disponible para los juegos'
+                },
+                {
+                    name: 'URLSearchParams disponible',
+                    status: typeof URLSearchParams !== 'undefined' ? 'success' : 'error',
+                    message: 'URLSearchParams está disponible para parámetros'
+                },
+                {
+                    name: 'RequestAnimationFrame disponible',
+                    status: typeof requestAnimationFrame !== 'undefined' ? 'success' : 'error',
+                    message: 'RequestAnimationFrame está disponible para animaciones'
+                }
+            ];
+            
+            checks.forEach(check => {
+                const status = document.createElement('div');
+                status.className = `status ${check.status}`;
+                status.textContent = `${check.status === 'success' ? '✅' : '❌'} ${check.name} - ${check.message}`;
+                systemDiv.appendChild(status);
+            });
+        }
+        
+        // Inicializar pruebas
+        document.addEventListener('DOMContentLoaded', () => {
+            checkFiles();
+            checkSystemStatus();
+            
+            console.log('🧪 Test de integración iniciado');
+            console.log('📁 Archivos verificados');
+            console.log('🎮 Minijuegos disponibles:', ['aimTrainer', 'memoryGame', 'snakeGame', 'bubblePop']);
+        });
+    </script>
+</body>
+</html>

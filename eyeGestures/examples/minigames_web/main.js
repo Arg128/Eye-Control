@@ -51,6 +51,17 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('EyeGestures Minigames loaded successfully!');
     console.log('Eye tracking status:', eyeTracking.fallbackMode ? 'Mouse mode' : 'Connected');
     
+    // Verificar si hay un juego específico en la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const gameParam = urlParams.get('game');
+    
+    if (gameParam && games[gameParam]) {
+        // Cargar el juego automáticamente después de un breve delay
+        setTimeout(() => {
+            loadGame(gameParam);
+        }, 1000);
+    }
+    
     // Escuchar eventos del sistema de eye tracking
     eyeTracking.addListener((data) => {
         // Actualizar indicador de calibración
