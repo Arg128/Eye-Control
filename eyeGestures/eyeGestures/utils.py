@@ -12,16 +12,19 @@ import numpy as np
 def recoverable(ret_error_params=()):
     def decorator(func):
         """
-        timeit
+        Decorador que captura errores recuperables y retorna un valor por defecto
+        sin hacer spam en consola. Para habilitar logs, exporta EYE_GESTURES_DEBUG=1.
         """
+        import os
+        DEBUG = os.environ.get("EYE_GESTURES_DEBUG", "0") == "1"
+
         def inner(*args, **kwargs):
-            """
-            inner
-            """
+            """Wrapper silencioso salvo en modo debug"""
             try:
                 return func(*args, **kwargs)
             except Exception as e:
-                print(f"Caugh error: {e}")
+                if DEBUG:
+                    print(f"Caugh error: {e}")
                 return ret_error_params
         return inner
     return decorator

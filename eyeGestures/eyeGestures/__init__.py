@@ -214,13 +214,6 @@ class EyeGestures_v2:
 
         self.fix = 0.8
 
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        print(state)
-        # 👇️ don't pickle the lock_object key
-        del state['lock_object']
-        return state
-
     def saveModel(self, context = "main"):
         if context in self.clb:
             return pickle.dumps(self.clb[context])

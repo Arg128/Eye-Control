@@ -10,8 +10,3 @@ venv
 dist/*
 *.csv
 data/*
-.env
-
-## Guarda tus propios datos aquí, tu calibración debe de ser unica :)
-
-examples/.pkl/*

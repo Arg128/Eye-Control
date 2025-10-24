@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EyeGestures - Minijuegos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">👁️ EyeGestures</h1>
+            <div class="connection-status">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Conectando...</span>
+            </div>
+            <!-- Indicador de calibración -->
+            <div class="calibration-indicator" id="calibrationIndicator" style="display: none;">
+                <div class="calibration-bar">
+                    <div class="calibration-progress" id="calibrationProgress"></div>
+                </div>
+                <span id="calibrationText">Calibrando...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Menu -->
+    <main class="main-menu" id="mainMenu">
+        <div class="container">
+            <h2 class="menu-title">Selecciona un Minijuego</h2>
+            <p class="menu-subtitle">Controla los juegos con tu mirada</p>
+            
+            <div class="game-grid">
+                <!-- Aim Trainer -->
+                <div class="game-card" onclick="loadGame('aimTrainer')">
+                    <div class="game-icon">🎯</div>
+                    <h3>Aim Trainer</h3>
+                    <p>Entrena tu precisión apuntando a objetivos que aparecen en pantalla</p>
+                    <div class="game-stats">
+                        <span class="stat">⏱️ 60s</span>
+                        <span class="stat">🎮 Fácil</span>
+                    </div>
+                </div>
+
+                <!-- Memory Game -->
+                <div class="game-card" onclick="loadGame('memoryGame')">
+                    <div class="game-icon">🧠</div>
+                    <h3>Memory Match</h3>
+                    <p>Encuentra las parejas de cartas usando solo tu mirada</p>
+                    <div class="game-stats">
+                        <span class="stat">🃏 16 cartas</span>
+                        <span class="stat">🎮 Medio</span>
+                    </div>
+                </div>
+
+                <!-- Snake Eye -->
+                <div class="game-card" onclick="loadGame('snakeGame')">
+                    <div class="game-icon">🐍</div>
+                    <h3>Snake Eye</h3>
+                    <p>Clásico Snake controlado con la dirección de tu mirada</p>
+                    <div class="game-stats">
+                        <span class="stat">🍎 ∞</span>
+                        <span class="stat">🎮 Difícil</span>
+                    </div>
+                </div>
+
+                <!-- Reaction Test -->
+                <div class="game-card" onclick="loadGame('reactionTest')">
+                    <div class="game-icon">⚡</div>
+                    <h3>Reaction Test</h3>
+                    <p>Mide tu tiempo de reacción mirando objetivos que cambian de color</p>
+                    <div class="game-stats">
+                        <span class="stat">⏱️ Variable</span>
+                        <span class="stat">🎮 Fácil</span>
+                    </div>
+                </div>
+
+                <!-- Bubble Pop -->
+                <div class="game-card" onclick="loadGame('bubblePop')">
+                    <div class="game-icon">💫</div>
+                    <h3>Bubble Pop</h3>
+                    <p>Revienta burbujas mirándolas durante 1 segundo</p>
+                    <div class="game-stats">
+                        <span class="stat">🎈 ∞</span>
+                        <span class="stat">🎮 Fácil</span>
+                    </div>
+                </div>
+
+                <!-- Focus Flow -->
+                <div class="game-card" onclick="loadGame('focusFlow')">
+                    <div class="game-icon">🌊</div>
+                    <h3>Focus Flow</h3>
+                    <p>Mantén tu mirada en el camino para avanzar sin salirte</p>
+                    <div class="game-stats">
+                        <span class="stat">🛣️ Niveles</span>
+                        <span class="stat">🎮 Medio</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Eye Tracking Info -->
+            <div class="tracking-info">
+                <div class="gaze-indicator" id="gazeIndicator"></div>
+                <div class="tracking-data">
+                    <div class="data-item">
+                        <span class="label">Posición X:</span>
+                        <span class="value" id="gazeX">0</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="label">Posición Y:</span>
+                        <span class="value" id="gazeY">0</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="label">Fijación:</span>
+                        <span class="value" id="fixation">0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Game Container -->
+    <div class="game-container hidden" id="gameContainer">
+        <div class="game-header">
+            <button class="back-button" onclick="backToMenu()">← Volver al Menú</button>
+            <div class="game-info">
+                <span class="game-title" id="currentGameTitle"></span>
+                <span class="game-score">Puntuación: <span id="gameScore">0</span></span>
+            </div>
+        </div>
+        <div class="game-canvas-wrapper">
+            <canvas id="gameCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Gaze Cursor -->
+    <div class="gaze-cursor" id="gazeCursor"></div>
+
+    <script src="eyeTracking.js"></script>
+    <script src="games.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
