@@ -11,6 +11,7 @@ dist/*
 *.csv
 data/*
 .env
+node_modules/
 
 ## Guarda tus propios datos aquí, tu calibración debe de ser unica :)
 
