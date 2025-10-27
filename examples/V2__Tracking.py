@@ -26,6 +26,7 @@ print(f"Resolución de pantalla: {screen_w}x{screen_h}")
 MODEL_PATH = os.path.join(os.path.dirname(__file__), ".pkl/calibration_model_eye_tracker.pkl")
 
 gestures = EyeGestures_v2()
+gestures.setClassicalImpact(2)
 
 # --- ensure context is initialized before loading model or calling step() ---
 # Try to call addContext if available, otherwise upload a minimal calibration map

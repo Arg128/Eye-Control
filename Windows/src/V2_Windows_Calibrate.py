@@ -1,7 +1,7 @@
 # ...existing code...
 import math
 from eyeGestures.utils import VideoCapture
-from eyeGestures import EyeGestures_v2
+from eyeGestures import EyeGestures_v2 
 import cv2
 import pygame
 import mouse
@@ -11,7 +11,8 @@ import sys
 
 context_tag = "eye_Tracker"
 
-gestures = EyeGestures_v2()
+gestures = EyeGestures_v2(calibration_radius=49)
+gestures.setClassicalImpact(2)
 cap = VideoCapture(0)
 calibrate = True
 
@@ -61,9 +62,12 @@ GREEN = (0, 255, 0)
 WHITE = (255, 255, 255)
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), ".pkl/calibration_model_eye_tracker.pkl")
-max_points = 35
-saved = False
 
+print(sys.argv[1:][0])
+print(f"Recibí los argumentos: {(sys.argv[1:][0])}")
+max_points = int(sys.argv[1:][0])
+#   max_points = 35
+saved = bool(sys.argv[1:][1])
 running = True
 while running:
     # eventos pygame
@@ -149,9 +153,9 @@ while running:
                 f.write(model_bytes)
         saved = True
         # cerramos la UI y salimos del loop para dejar solo tracking en otro script
-        pygame.quit()
-        running = False
-        break
+        #   pygame.quit()
+        #   running = False
+        #   break
 
     clock.tick(60)
 
