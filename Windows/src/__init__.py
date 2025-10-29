@@ -46,14 +46,14 @@ class EyeControlApp_TK:
         self.w = int(WIDTH / 2)
         self.h = int(HEIGHT / 2) + 40
         master.geometry(f"{self.w}x{self.h}")
-        master.title("Eye Control - V2 (Tk)")
+        master.title("Eye Motion - V2 (Tk)")
 
         # Main layout frame
         main = ttk.Frame(master, padding=8)
         main.pack(fill="both", expand=True)
 
         # Top label
-        header = ttk.Label(main, text="Eye Control", anchor="center", font=("Arial", 20))
+        header = ttk.Label(main, text="Eye Motion", anchor="center", font=("Arial", 20))
         header.pack(fill="x", pady=(0,8))
 
         # Canvas with background image (if available)
@@ -123,6 +123,7 @@ class EyeControlApp_TK:
         self.newCalibrationVar = tk.BooleanVar(value=True)
         ttk.Checkbutton(win, variable=self.newCalibrationVar).pack(padx=7, pady=7)
 
+        subprocess.Popen(["py", "-3.11", os.path.join(os.path.dirname(__file__),"face_check.py"), "--show", "--frames","40","--threshold","0.9"], creationflags=subprocess.CREATE_NEW_CONSOLE)
         if (Ver == "V2"):
             btn_start_calibration = ttk.Button(win, text="Iniciar calibración", command=lambda: self.calibrate_v2(val=True, win=win))
         elif Ver == "V3":

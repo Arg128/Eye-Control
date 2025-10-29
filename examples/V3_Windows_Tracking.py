@@ -123,7 +123,7 @@ else:
 # ---------- Loop principal de tracking (aplica corrección) ----------
 
 #   scale_x = scale_y = 1.0
-#   offset_x = offset_y = 0.0
+#offset_x = offset_y = 0.0
 print("No se calculó transform. Usando identidad.")
 
 try:

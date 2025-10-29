@@ -2,13 +2,20 @@ import os
 import sys
 import time
 import warnings
-
+import subprocess
 import cv2
 import ctypes
 import mouse
 from eyeGestures import EyeGestures_v3
 from eyeGestures.utils import VideoCapture
 import numpy as np
+
+
+prox = subprocess.Popen(["py", "-3.11", os.path.join(os.path.dirname(__file__),"face_check.py"), "--show", "--frames","40","--threshold","0.9"], creationflags=subprocess.CREATE_NEW_CONSOLE)
+time.sleep(12)
+if prox.returncode != 0:
+    print("Face check failed. Exiting.")
+    #   sys.exit(1)
 
 context_tag = "eye_Tracker_v3"
 
@@ -24,6 +31,7 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), ".pkl", "calibration_model_
 if not os.path.exists(MODEL_PATH):
     print("No model found. Run run_calibration_v3_pygame.py first.")
     sys.exit(1)
+
 
 gestures = EyeGestures_v3()
 # ensure context exists

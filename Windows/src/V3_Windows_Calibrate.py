@@ -73,7 +73,7 @@ print("In module products sys.path[0], __package__ ==", sys.path[0], __package__
 
 #   from src import points
 print(sys.argv[1:][0])
-print(f"Recibí los argumentos: {(sys.argv[1:][0])}")
+print(f"Recibí los argumentos: {(sys.argv[1:])}")
 max_points = int(sys.argv[1:][0])
 saved = bool(sys.argv[1:][1])
 running = True
