@@ -80,6 +80,8 @@ running = True
 
 CHANGERADIO = True
 
+iter = 0
+MAX_ITER = 100
 print("Quick bias calibration: mira al centro de la pantalla y pulsa Enter")
 #input("Pulsa Enter cuando estés listo...")
 # captura predicciones durante 2 segundos o hasta N muestras válidas
@@ -93,7 +95,15 @@ while running:
             if e.key == pygame.K_q and pygame.key.get_mods() & pygame.KMOD_CTRL:
                 running = False
 
-    ret, frame = cap.read()
+    if (MAX_ITER < iter):
+        break
+    try:
+        ret, frame = cap.read()
+        print("SHAPE",frame.shape)
+    except Exception:
+        print("Warning: unable to read from camera")
+        screen.blit(pygame.font.SysFont(None, 24).render("Warning: unable to read from camera", True, (255, 255, 255)), (10, 10))
+        continue
     if not ret or frame is None:
         continue
 
@@ -103,8 +113,15 @@ while running:
     calibrate = (iterator <= max_points)
 
     # single step call
-    
-    event, calibration = gestures.step(frame_rgb, calibrate, screen_width, screen_height, context=context_tag)
+    try:
+        event, calibration = gestures.step(frame_rgb, calibrate, screen_width, screen_height, context=context_tag)
+        screen.blit(pygame.font.SysFont(None, 24).render("Warning: unable to read from Gestures", True, (255, 255, 255)), (10, 10))
+    except Exception as ex:
+        print("Error during gestures.step():", ex)
+        screen.blit(pygame.font.SysFont(None, 24).render("Warning: unable to read gestures", True, (255, 255, 255)), (10, 10))
+        iter += 1
+        clock.tick(60)
+        continue
     # prepare small preview
         # no valid data this frame
     if event is None and calibration is None:
@@ -120,14 +137,16 @@ while running:
         surf = None
 
     screen.fill((0, 0, 0))
-    if surf is not None:
+    
+    #   APLICALO CON ROSTRO
+    """     if surf is not None:
         ref_image = np.flip(event.sub_frame, axis=0)
         screen.blit(
             pygame.surfarray.make_surface(
                 event.sub_frame
             ),
             (screen_width/2 - 200, 0)
-        )
+        ) """
         #   screen.blit(surf, (10, 10))
 
     # mover mouse si no hay evento de tracking (cuando se está dibujando calibración)
