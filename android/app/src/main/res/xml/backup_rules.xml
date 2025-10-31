@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Incluir preferencias de usuario en backup -->
+    <include domain="sharedpref" path="." />
+    
+    <!-- Excluir archivos temporales -->
+    <exclude domain="file" path="temp" />
+    <exclude domain="cache" path="." />
+</full-backup-content>

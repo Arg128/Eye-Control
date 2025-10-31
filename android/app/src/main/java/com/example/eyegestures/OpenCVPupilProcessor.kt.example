@@ -1,0 +1,211 @@
+package com.example.eyegestures
+
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import androidx.camera.core.ImageProxy
+import org.opencv.android.Utils
+import org.opencv.core.*
+import org.opencv.imgproc.Imgproc
+
+/**
+ * Procesador de OpenCV para detección de pupila
+ * 
+ * INSTRUCCIONES DE USO:
+ * 
+ * 1. En tu FaceAnalyzer, después de procesar con ML Kit, llama a:
+ *    ```
+ *    val processedBitmap = OpenCVPupilProcessor.processFrame(imageProxy)
+ *    DiagnosticManager.updateProcessedFrame(processedBitmap)
+ *    ```
+ * 
+ * 2. Si ya tienes tu propio algoritmo de OpenCV, reemplaza el método
+ *    processFrameWithOpenCV() con tu implementación
+ */
+object OpenCVPupilProcessor {
+    
+    /**
+     * Procesa un frame de la cámara y devuelve la imagen procesada
+     * 
+     * @param imageProxy Frame de CameraX
+     * @return Bitmap procesado en blanco y negro con detección de pupila
+     */
+    fun processFrame(imageProxy: ImageProxy): Bitmap? {
+        try {
+            // Convertir ImageProxy a Mat de OpenCV
+            val mat = imageProxyToMat(imageProxy)
+            
+            if (mat != null) {
+                // Procesar con OpenCV (tu algoritmo aquí)
+                val processedMat = processFrameWithOpenCV(mat)
+                
+                // Convertir Mat a Bitmap para mostrar
+                val bitmap = matToBitmap(processedMat)
+                
+                // Liberar memoria
+                mat.release()
+                processedMat.release()
+                
+                return bitmap
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("OpenCVProcessor", "Error processing frame", e)
+        }
+        
+        return null
+    }
+    
+    /**
+     * ALGORITMO DE PROCESAMIENTO DE PUPILA
+     * 
+     * Reemplaza esto con tu algoritmo real de OpenCV
+     * Este es un ejemplo básico de detección por umbral
+     */
+    private fun processFrameWithOpenCV(inputMat: Mat): Mat {
+        // 1. Convertir a escala de grises
+        val grayMat = Mat()
+        Imgproc.cvtColor(inputMat, grayMat, Imgproc.COLOR_RGBA2GRAY)
+        
+        // 2. Aplicar desenfoque gaussiano (reduce ruido)
+        val blurredMat = Mat()
+        Imgproc.GaussianBlur(grayMat, blurredMat, Size(5.0, 5.0), 0.0)
+        
+        // 3. Aplicar umbral binario (la pupila es oscura)
+        val thresholdMat = Mat()
+        Imgproc.threshold(
+            blurredMat,
+            thresholdMat,
+            50.0,  // Umbral (ajustar según iluminación)
+            255.0,
+            Imgproc.THRESH_BINARY_INV  // Invertir: pupila = blanco, resto = negro
+        )
+        
+        // 4. Encontrar contornos (opcional - para detección más precisa)
+        val contours = ArrayList<MatOfPoint>()
+        val hierarchy = Mat()
+        Imgproc.findContours(
+            thresholdMat,
+            contours,
+            hierarchy,
+            Imgproc.RETR_EXTERNAL,
+            Imgproc.CHAIN_APPROX_SIMPLE
+        )
+        
+        // 5. Encontrar el contorno más grande (probablemente la pupila)
+        if (contours.isNotEmpty()) {
+            var maxContour = contours[0]
+            var maxArea = Imgproc.contourArea(maxContour)
+            
+            for (contour in contours) {
+                val area = Imgproc.contourArea(contour)
+                if (area > maxArea) {
+                    maxArea = area
+                    maxContour = contour
+                }
+            }
+            
+            // 6. Calcular el centro del contorno (posición de la pupila)
+            val moments = Imgproc.moments(maxContour)
+            val centerX = (moments.m10 / moments.m00).toFloat()
+            val centerY = (moments.m01 / moments.m00).toFloat()
+            
+            // Actualizar posición de pupila en DiagnosticManager
+            if (!centerX.isNaN() && !centerY.isNaN()) {
+                DiagnosticManager.updatePupilPosition(centerX, centerY)
+            }
+            
+            // Dibujar círculo en el centro (opcional - visualización)
+            Imgproc.circle(
+                thresholdMat,
+                Point(centerX.toDouble(), centerY.toDouble()),
+                10,
+                Scalar(128.0),  // Gris medio
+                -1  // Relleno
+            )
+        }
+        
+        // Liberar recursos temporales
+        grayMat.release()
+        blurredMat.release()
+        hierarchy.release()
+        contours.forEach { it.release() }
+        
+        return thresholdMat
+    }
+    
+    /**
+     * Convierte ImageProxy a Mat de OpenCV
+     */
+    private fun imageProxyToMat(imageProxy: ImageProxy): Mat? {
+        try {
+            val image = imageProxy.image ?: return null
+            
+            // Obtener el plano Y (luminancia) del formato YUV
+            val yBuffer = image.planes[0].buffer
+            val ySize = yBuffer.remaining()
+            val yBytes = ByteArray(ySize)
+            yBuffer.get(yBytes)
+            
+            // Crear Mat a partir de los bytes
+            val mat = Mat(image.height, image.width, CvType.CV_8UC1)
+            mat.put(0, 0, yBytes)
+            
+            return mat
+        } catch (e: Exception) {
+            android.util.Log.e("OpenCVProcessor", "Error converting ImageProxy to Mat", e)
+            return null
+        }
+    }
+    
+    /**
+     * Convierte Mat de OpenCV a Bitmap
+     */
+    private fun matToBitmap(mat: Mat): Bitmap {
+        val bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888)
+        
+        // Si es un Mat de un solo canal (gris), convertir a RGBA
+        val rgbaMat = if (mat.channels() == 1) {
+            val rgba = Mat()
+            Imgproc.cvtColor(mat, rgba, Imgproc.COLOR_GRAY2RGBA)
+            rgba
+        } else {
+            mat
+        }
+        
+        Utils.matToBitmap(rgbaMat, bitmap)
+        
+        if (rgbaMat != mat) {
+            rgbaMat.release()
+        }
+        
+        return bitmap
+    }
+    
+    /**
+     * Versión alternativa: procesar desde Bitmap directamente
+     * (si ya tienes un Bitmap de tu cámara)
+     */
+    fun processBitmap(bitmap: Bitmap): Bitmap? {
+        try {
+            // Convertir Bitmap a Mat
+            val mat = Mat()
+            Utils.bitmapToMat(bitmap, mat)
+            
+            // Procesar con OpenCV
+            val processedMat = processFrameWithOpenCV(mat)
+            
+            // Convertir de vuelta a Bitmap
+            val resultBitmap = matToBitmap(processedMat)
+            
+            // Liberar
+            mat.release()
+            processedMat.release()
+            
+            return resultBitmap
+        } catch (e: Exception) {
+            android.util.Log.e("OpenCVProcessor", "Error processing bitmap", e)
+            return null
+        }
+    }
+}
