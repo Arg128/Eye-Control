@@ -34,6 +34,14 @@
             box-shadow: 0 4px 20px rgba(29, 53, 87, 0.3);
         }
 
+        #webgazerVideoFeed,
+#webgazerVideoCanvas,
+#webgazerFaceOverlay,
+#webgazerFaceFeedbackBox{
+    position: fixed !important;
+  z-index: 2147483647 !important;   /* mayor que 10001 */         /* opcional: no bloquea clics */
+}       
+
         .header h1 {
             font-size: 1.5rem;
             margin-bottom: 10px;
@@ -275,6 +283,16 @@
         .calibration-indicator h3 {
             font-size: 2rem;
             margin-bottom: 20px;
+        }
+
+        #webgazerVideoContainer,
+        #webgazerVideoFeed,
+        #webgazerVideoCanvas,
+        #webgazerFaceOverlay,
+        #webgazerFaceFeedbackBox{
+            position: fixed !important;   /* quítalo si no lo quieres anclado a la esquina */
+            z-index: 2147483647 !important;
+            pointer-events: none !important; /* no bloquea el scroll/click */
         }
     </style>
 </head>
