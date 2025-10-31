@@ -7,9 +7,15 @@ import numpy as np
 import pygame
 import mouse
 import ctypes
+import time  # wait a bit for camera to be ready
+import win32con
+import win32gui
 
+import win32api
 from eyeGestures.utils import VideoCapture
 from eyeGestures import EyeGestures_v3
+from sklearn.linear_model import Ridge
+from calib_io import save_calibration_npz, save_sklearn_model
 
 from check import ensure_face_present, open_video_source
 
@@ -26,7 +32,10 @@ except TypeError:
 # --- parse optional CLI args for camera source / resolution ---
 
 # camera
+
+time.sleep(12)  # wait a bit for camera to be ready
 cap = open_video_source(0)
+
 # camera
 #cap = VideoCapture(0)
 
@@ -54,20 +63,29 @@ screen_height = user32.GetSystemMetrics(1)
 pygame.init()
 pygame.font.init()
 screen = pygame.display.set_mode((screen_width, screen_height))
+hwnd = pygame.display.get_wm_info()["window"]
+
+# Getting information of the current active window
+win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, win32gui.GetWindowLong(
+                       hwnd, win32con.GWL_EXSTYLE) | win32con.WS_EX_LAYERED)
+
+win32gui.SetLayeredWindowAttributes(hwnd, win32api.RGB(255, 0, 128), 0, win32con.LWA_COLORKEY)
+# This will set the opacity and transparency color key of a layered window
+font = pygame.font.SysFont("Times New Roman", 54)
+# declare the size and font of the text for the window
+text = []
+# Declaring the array for storing the text
+text.append((font.render("Press Ctrl + Q to Escape", 0, (255, 100, 100)), (20, 250)))
 pygame.display.set_caption("EyeGestures v3 - Calibración")
 clock = pygame.time.Clock()
 bold_font = pygame.font.Font(None, 48)
 bold_font.set_bold(True)
 
-MODEL_DIR = os.path.join(os.path.dirname(__file__), ".pkl")
-os.makedirs(MODEL_DIR, exist_ok=True)
-MODEL_PATH = os.path.join(MODEL_DIR, "calibration_model_v3.pkl")
-
 iterator = 0
 prev_x = prev_y = 0
 max_points = min(len(calibration_map), 50)
 
-import sys    
+import sys
 print("In module products sys.path[0], __package__ ==", sys.path[0], __package__)
 #   sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
@@ -88,6 +106,8 @@ print("Quick bias calibration: mira al centro de la pantalla y pulsa Enter")
 
 
 while running:
+         # Transparent background
+    screen.fill((255,0,128)) 
     for e in pygame.event.get():
         if e.type == pygame.QUIT:
             running = False
@@ -106,7 +126,7 @@ while running:
         continue
     if not ret or frame is None:
         continue
-
+    
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     frame_rgb = np.rot90(frame_rgb)
     #   frame_rgb = np.flip(frame_rgb, axis=1)
@@ -136,7 +156,7 @@ while running:
     except Exception:
         surf = None
 
-    screen.fill((0, 0, 0))
+    #   screen.fill((0, 0, 0))
     
     #   APLICALO CON ROSTRO
     """     if surf is not None:
@@ -222,18 +242,34 @@ while running:
     pygame.display.flip()
 
     # once finished save model and exit (close pygame to allow headless tracking script)
-    if iterator > max_points and not saved:
-        model_bytes = gestures.saveModel(context=context_tag)
-        if model_bytes:
-            with open(MODEL_PATH, "wb") as f:
-                f.write(model_bytes)
-        saved = True
+        ## model_bytes = gestures.saveModel(context=context_tag)
+        ## if model_bytes:
+        ##    with open(MODEL_PATH, "wb") as f:
+        ##        f.write(model_bytes)
+        ##saved = True
         ##  pygame.quit()
         ##  running = False
         ##  break
 
     clock.tick(60)
+if iterator >= max_points and saved:
+        out_dir = os.path.join(os.path.dirname(__file__), "saved")
+        os.makedirs(out_dir, exist_ok=True)
+        clb_dict = getattr(gestures, "clb", None)
+        clb = clb_dict[context_tag] 
+        # clb es tu calibrador con atributos X, Y_x, Y_y y reg_x/reg_y/scaler si existen
+        npz_path = os.path.join(os.path.dirname(__file__), "saved", "calib_v3_data.npz")
+        save_calibration_npz(npz_path, clb.X, clb.Y_x, clb.Y_y, meta={"screen": (1920, 1080)})
 
+        # opcional: guardar también los modelos entrenados
+        save_sklearn_model(os.path.join(os.path.dirname(__file__), "saved", "reg_x.joblib"), clb.reg_x)
+        save_sklearn_model(os.path.join(os.path.dirname(__file__), "saved", "reg_y.joblib"), clb.reg_y)
+        if hasattr(clb, "scaler") and clb.scaler is not None:
+            save_sklearn_model(os.path.join(out_dir, "scaler.joblib"), clb.scaler)
+
+else:
+    time.sleep(1)
+    print("Calibracion mala,")
 # cleanup
 try:
     cap.close()
@@ -245,7 +281,7 @@ try:
     print(f"Rostro detectado en {dets}/{tot} frames -> frac={frac:.2f}")
     if not ok:
         print("No se detecta rostro suficientemente estable (>0.8). Mejora iluminación/posición o cambia la fuente con --source.")
-    print("Calibración finalizada. Modelo guardado en:", MODEL_PATH)
+    print("Calibración finalizada. Modelo guardado en:")
     cap.close()
     pygame.quit()
     sys.exit("Salida del todo el programa python")

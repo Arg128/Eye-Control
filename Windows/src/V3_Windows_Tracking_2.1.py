@@ -14,6 +14,8 @@ from eyeGestures import EyeGestures_v3
 from eyeGestures.utils import VideoCapture
 # archivo "check" que define ensure_face_present / open_video_source en tu repo
 from check import ensure_face_present, open_video_source
+from calib_io import load_calibration_npz, load_sklearn_model
+from sklearn.linear_model import Ridge
 
 # --- config ---
 context_tag = "eye_Tracker_v3"
@@ -32,14 +34,14 @@ try:
 except Exception as e:
     print("Could not run face_check.py:", e)
 
-# model path
+""" # model path
 MODEL_PATH = os.path.join(os.path.dirname(__file__), ".pkl", "calibration_model_v3.pkl")
 if not os.path.exists(MODEL_PATH):
     print("No model found. Run run_calibration_v3_pygame.py first.")
-    sys.exit(1)
+    sys.exit(1) """
 
 # load gestures & model
-gestures = EyeGestures_v3()
+gestures = EyeGestures_v3(calibration_radius=70)
 if hasattr(gestures, "addContext"):
     try:
         gestures.addContext(context_tag)
@@ -48,22 +50,82 @@ if hasattr(gestures, "addContext"):
 else:
     gestures.uploadCalibrationMap(np.array([[0.5, 0.5]]), context=context_tag)
 
-print(f"Loading model from {MODEL_PATH}...")
+#   print(f"Loading model from {MODEL_PATH}...")
+print("New loader '.npz' file")
 
-with open(MODEL_PATH, "rb") as f:
+# intento cargar joblib primero
+saved = os.path.join(os.path.dirname(__file__), "saved")
+
+try:
+    reg_x = load_sklearn_model(os.path.join(saved, "reg_x.joblib"))
+    reg_y = load_sklearn_model(os.path.join(saved, "reg_y.joblib"))
+    scaler = None
+    try:
+        scaler = load_sklearn_model(os.path.join(saved, "scaler.joblib"))
+    except Exception:
+        scaler = None
+    print("Modelos cargados desde joblib")
+except Exception:
+    # fallback: cargar datos y reentrenar
+    try:
+        X, Yx, Yy, meta = load_calibration_npz(os.path.join(saved, "calib_v3_data.npz"))
+        reg_x = Ridge(alpha=1.0).fit(X, Yx.ravel())
+        reg_y = Ridge(alpha=1.0).fit(X, Yy.ravel())
+        print("Regressors reentrenados desde NPZ")
+    except Exception as e:
+        print("No hay datos para reentrenar:", e)
+        reg_x = reg_y = None
+
+X, Yx, Yy, meta = load_calibration_npz(os.path.join(saved, "calib_v3_data.npz"))
+reg_x = Ridge(alpha=1.0).fit(X, Yx.ravel())
+reg_y = Ridge(alpha=1.0).fit(X, Yy.ravel())
+print("Regressors reentrenados desde NPZ")
+""" with open(MODEL_PATH, "rb") as f:
     data = f.read()
-gestures.loadModel(data, context=context_tag)
+gestures.loadModel(data, context=context_tag) """
 
 # camera: request a stable resolution similar to calibration (adjust if needed)
 CAP_WIDTH = 1280
 CAP_HEIGHT = 720
-print(f"Opening camera with resolution {CAP_WIDTH}x{CAP_HEIGHT}...")
+#   print(f"Opening camera with resolution {CAP_WIDTH}x{CAP_HEIGHT}...")
 cap = open_video_source(0)
 """ try:
     cap.cap.set(cv2.CAP_PROP_FRAME_WIDTH, int(CAP_WIDTH))
     cap.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, int(CAP_HEIGHT))
 except Exception:
     pass """
+# ...insert after models load...
+import types
+# --- diagnostics & robust attach of regressors/scaler ---
+def _is_fitted(est):
+    return est is not None and any(hasattr(est, a) for a in ("coef_", "intercept_", "n_features_in_"))
+
+print("Diagnóstico modelos:")
+print(" reg_x loaded:", 'reg_x' in locals() and reg_x is not None, " fitted:", _is_fitted(locals().get("reg_x", None)))
+print(" reg_y loaded:", 'reg_y' in locals() and reg_y is not None, " fitted:", _is_fitted(locals().get("reg_y", None)))
+print(" scaler loaded:", 'scaler' in locals() and locals().get("scaler", None) is not None)
+
+# ensure camera resolution applied to the real cv2 capture object
+try:
+    real_cap = getattr(cap, "cap", cap)
+    real_cap.set(cv2.CAP_PROP_FRAME_WIDTH, int(CAP_WIDTH))
+    real_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, int(CAP_HEIGHT))
+    # read one frame to confirm
+    ret0, f0 = real_cap.read()
+    if ret0 and f0 is not None:
+        print("confirm frame.shape after set:", f0.shape)
+    else:
+        print("warning: no frame after setting resolution; got ret0=", ret0)
+except Exception as e:
+    print("warning setting capture resolution:", e)
+
+
+clb_dict = getattr(gestures, "clb", None)
+clb = clb_dict.get(context_tag, None)
+clb.reg_x = reg_x
+clb.reg_y = reg_y
+clb.scaler = scaler
+
 
 # try to get device FPS; fallback to 60
 cap_fps = cap.cap.get(cv2.CAP_PROP_FPS)
@@ -81,7 +143,7 @@ APPLY_ROT90 = True        # calibrate used np.rot90(frame_rgb)
 MIRROR_X = False          # set True if data is mirrored
 MAX_ITER = 100
 # safety: small debug prints for first frames
-_debug_frames = 6
+_debug_frames = 40
 iter = 0
 print("Starting V3 tracking loop. Press (Ctrl) to stop.")
 stop = False
@@ -93,7 +155,7 @@ _cap = cap
 if not hasattr(_cap, "read") and hasattr(_cap, "cap"):
     _cap = _cap.cap
 
-_debug_frames = 6
+_debug_frames = 20
 iter_count = 0
 
 print("Starting V3 tracking loop. Press Ctrl to stop.")
@@ -149,13 +211,15 @@ try:
             time.sleep(frame_time)
             continue
 
-        raw = np.asarray(evt.point, dtype=float).flatten()
+        """ raw = np.asarray(evt.point, dtype=float).flatten()
         if raw.size < 2 or np.any(np.isnan(raw)) or np.any(np.isinf(raw)):
             print("Invalid evt.point:", raw)
             time.sleep(frame_time)
-            continue
+            continue 
+        """
 
-        # Heuristics to convert raw -> screen pixels:
+        """
+         # Heuristics to convert raw -> screen pixels:
         # - If values look normalized (all in [-0.2..1.2]) treat as [0..1] and scale.
         # - Otherwise, if values are small (< screen dims) assume already pixels.
         max_abs = np.max(np.abs(raw))
@@ -182,12 +246,14 @@ try:
 
         # final sanitize and apply mirror if needed
         if MIRROR_X:
-            px = screen_w - px
+            px = screen_w - px 
+        """
 
         # clip and cast to int
-        x = int(np.clip(px, 0, screen_w - 1))
-        y = int(np.clip(py, 0, screen_h - 1))
-
+        #   x = int(np.clip(px, 0, screen_w - 1))
+        #   y = int(np.clip(py, 0, screen_h - 1))
+        x, y = evt.point[0], evt.point[1]
+        print(evt.point)
         # move mouse safely
         try:
             mouse.move(x, y, absolute=True, duration=0)
@@ -195,8 +261,9 @@ try:
             warnings.warn(f"mouse.move error: {e}")
 
         # optional debug print (limited)
-        if iter_count < 10:
-            print(f"raw={raw} -> px/py=({px:.1f},{py:.1f}) -> clipped=({x},{y})")
+        """         
+            if iter_count < 10:
+            print(f"raw={raw} -> px/py=({px:.1f},{py:.1f}) -> clipped=({x},{y})") """
 
         # rate control
         time.sleep(frame_time)
@@ -214,3 +281,4 @@ finally:
         pass
     print("Tracking stopped.")
 # ...existing code...
+
