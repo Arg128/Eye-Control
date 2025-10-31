@@ -11,6 +11,9 @@ coverage/
 *.cover
 .nyc_output/
 .cache/
+.venv/
+__pycache__/
+.vscode/
 
 # Archivos de construcción
 dist/
@@ -53,3 +56,4 @@ temp/
 # Archivos de depuración
 .vscode/launch.json
 chrome-debug/
+eyeGestures/
