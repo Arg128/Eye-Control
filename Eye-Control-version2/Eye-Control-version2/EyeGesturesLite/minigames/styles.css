@@ -1,0 +1,368 @@
+/* Estilos para EyeGestures Minigames */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Panel de estadísticas */
+#stats-panel {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 15px 20px;
+    border-radius: 15px;
+    color: white;
+    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-width: 250px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+.stat-label {
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+.stat-value {
+    font-weight: bold;
+    font-size: 16px;
+    padding: 4px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    min-width: 80px;
+    text-align: center;
+}
+
+/* Contenedor principal */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.title {
+    font-size: 3.5rem;
+    color: white;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.3);
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.subtitle {
+    font-size: 1.3rem;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 30px;
+}
+
+.status-message {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    padding: 15px 30px;
+    border-radius: 25px;
+    color: white;
+    font-size: 1.1rem;
+    display: inline-block;
+    margin-bottom: 40px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.camera-info {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    border-radius: 15px;
+    margin: 20px auto;
+    max-width: 400px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.camera-info p {
+    color: #333;
+    margin: 10px 0;
+}
+
+.test-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: all 0.3s ease;
+}
+
+.test-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+/* Grid de juegos */
+.games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+    margin: 40px 0;
+}
+
+.game-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 30px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.game-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+}
+
+.game-icon {
+    font-size: 4rem;
+    margin-bottom: 15px;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.game-card h3 {
+    color: #333;
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.game-card p {
+    color: #666;
+    font-size: 1rem;
+    margin-bottom: 20px;
+}
+
+.play-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.play-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.play-btn:active {
+    transform: scale(0.98);
+}
+
+/* Información de calibración */
+.calibration-info {
+    margin-top: 30px;
+    padding: 20px;
+    background: rgba(255, 87, 87, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    color: white;
+    border: 2px solid rgba(255, 87, 87, 0.5);
+}
+
+.calibration-info p {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+/* Contenedor de juego */
+#game-container {
+    max-width: 95vw;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+#game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px 30px;
+    border-radius: 15px 15px 0 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+#back-btn {
+    background: rgba(102, 126, 234, 0.2);
+    color: #667eea;
+    border: 2px solid #667eea;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#back-btn:hover {
+    background: #667eea;
+    color: white;
+    transform: translateX(-5px);
+}
+
+#game-title {
+    color: #333;
+    font-size: 1.8rem;
+    margin: 0;
+}
+
+#game-score {
+    color: #333;
+    font-size: 1.3rem;
+    font-weight: bold;
+}
+
+#score {
+    color: #4CAF50;
+    font-size: 1.5rem;
+}
+
+#game-canvas {
+    display: block;
+    background: #1a1a2e;
+    border-radius: 0 0 15px 15px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    margin: 0 auto;
+}
+
+#game-info {
+    text-align: center;
+    color: white;
+    font-size: 1.2rem;
+    margin-top: 20px;
+    min-height: 50px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .title {
+        font-size: 2.5rem;
+    }
+    
+    .subtitle {
+        font-size: 1.1rem;
+    }
+    
+    .games-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    #stats-panel {
+        position: static;
+        margin: 10px;
+        width: calc(100% - 20px);
+    }
+    
+    #game-header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    #back-btn {
+        width: 100%;
+    }
+}
+
+/* Animaciones adicionales */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.game-card {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+.game-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.game-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.game-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.game-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+/* Efectos de carga */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.feature {
+    cursor: pointer;
+}

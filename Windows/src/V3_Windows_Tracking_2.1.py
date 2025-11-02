@@ -9,6 +9,11 @@ import ctypes
 import mouse
 import numpy as np
 import keyboard
+import win32con
+import win32api
+import win32gui
+
+import pygame
 
 from eyeGestures import EyeGestures_v3
 from eyeGestures.utils import VideoCapture
@@ -39,50 +44,78 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), ".pkl", "calibration_model_
 if not os.path.exists(MODEL_PATH):
     print("No model found. Run run_calibration_v3_pygame.py first.")
     sys.exit(1) """
-
+x = np.arange(0, 1.1, 0.2)
+y = np.arange(0, 1.1, 0.2)
+xx, yy = np.meshgrid(x, y)
+calibration_map = np.column_stack([xx.ravel(), yy.ravel()])
+np.random.shuffle(calibration_map)
 # load gestures & model
-gestures = EyeGestures_v3(calibration_radius=70)
+gestures = EyeGestures_v3()
 if hasattr(gestures, "addContext"):
     try:
         gestures.addContext(context_tag)
     except Exception:
         pass
 else:
-    gestures.uploadCalibrationMap(np.array([[0.5, 0.5]]), context=context_tag)
+    print("No hay nada")
+    gestures.uploadCalibrationMap(calibration_map, context=context_tag)
 
 #   print(f"Loading model from {MODEL_PATH}...")
 print("New loader '.npz' file")
-
+#   MODEL_PATH = os.path.join(os.path.dirname(__file__), "saved", "my_file_v3.pkl")
 # intento cargar joblib primero
 saved = os.path.join(os.path.dirname(__file__), "saved")
 
-try:
-    reg_x = load_sklearn_model(os.path.join(saved, "reg_x.joblib"))
-    reg_y = load_sklearn_model(os.path.join(saved, "reg_y.joblib"))
-    scaler = None
-    try:
-        scaler = load_sklearn_model(os.path.join(saved, "scaler.joblib"))
-    except Exception:
-        scaler = None
-    print("Modelos cargados desde joblib")
-except Exception:
-    # fallback: cargar datos y reentrenar
-    try:
-        X, Yx, Yy, meta = load_calibration_npz(os.path.join(saved, "calib_v3_data.npz"))
-        reg_x = Ridge(alpha=1.0).fit(X, Yx.ravel())
-        reg_y = Ridge(alpha=1.0).fit(X, Yy.ravel())
-        print("Regressors reentrenados desde NPZ")
-    except Exception as e:
-        print("No hay datos para reentrenar:", e)
-        reg_x = reg_y = None
-
-X, Yx, Yy, meta = load_calibration_npz(os.path.join(saved, "calib_v3_data.npz"))
+""" X, Yx, Yy, meta = load_calibration_npz(os.path.join(saved, "calib_v3_data.npz"))
 reg_x = Ridge(alpha=1.0).fit(X, Yx.ravel())
-reg_y = Ridge(alpha=1.0).fit(X, Yy.ravel())
-print("Regressors reentrenados desde NPZ")
-""" with open(MODEL_PATH, "rb") as f:
-    data = f.read()
-gestures.loadModel(data, context=context_tag) """
+reg_y = Ridge(alpha=1.0).fit(X, Yy.ravel()) """
+#   print("Regressors reentrenados desde NPZ")
+
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "saved", "my_file_v3.bin")
+loaded_model_ok = False
+""" if os.path.exists(MODEL_PATH):
+    try:
+        with open(MODEL_PATH, "rb") as f:
+            blob = f.read()
+        print("Leídos", len(blob), "bytes desde", MODEL_PATH)
+        print(blob)
+        # 1) intentar pasar blob directamente (si saveModel devolvió bytes)
+        try:
+            gestures.loadModel(blob, context=context_tag)
+            loaded_model_ok = True
+            print("Modelo cargado pasando bytes a gestures.loadModel()")
+        except Exception as e_bytes:
+            # 2) intentar unpickle y pasar el objeto resultante
+            try:
+                import pickle
+                obj = pickle.loads(blob)
+                gestures.loadModel(obj, context=context_tag)
+                loaded_model_ok = True
+                print("Modelo cargado después de pickle.loads()")
+            except Exception as e_pickle:
+                print("No se pudo cargar modelo (bytes):", e_bytes, " ; (pickle):", e_pickle)
+    except Exception as e:
+        print("Error leyendo MODEL_PATH:", e)
+else:
+    print("Modelo no encontrado en", MODEL_PATH)
+ """
+time.sleep(7)
+try:
+    with open(MODEL_PATH, 'rb') as file:
+        data = file.read()
+    gestures.loadModel(data, context=context_tag)
+    file.close()
+except Exception as e:
+    print("No se pudo cargar el modelo desde el pickle binario:")
+    print(e)
+    time.sleep(7)
+""" try:
+    with open(MODEL_PATH, "rb") as f:
+        data = f.read()
+    dataNuevo = gestures.loadModel(MODEL_PATH, context=context_tag)
+except Exception as e:
+    print("No se pudo cargar el modelo desde pickle:", e)
+ """
 
 # camera: request a stable resolution similar to calibration (adjust if needed)
 CAP_WIDTH = 1280
@@ -95,18 +128,11 @@ cap = open_video_source(0)
 except Exception:
     pass """
 # ...insert after models load...
-import types
-# --- diagnostics & robust attach of regressors/scaler ---
-def _is_fitted(est):
-    return est is not None and any(hasattr(est, a) for a in ("coef_", "intercept_", "n_features_in_"))
 
-print("Diagnóstico modelos:")
-print(" reg_x loaded:", 'reg_x' in locals() and reg_x is not None, " fitted:", _is_fitted(locals().get("reg_x", None)))
-print(" reg_y loaded:", 'reg_y' in locals() and reg_y is not None, " fitted:", _is_fitted(locals().get("reg_y", None)))
-print(" scaler loaded:", 'scaler' in locals() and locals().get("scaler", None) is not None)
+# --- diagnostics & robust attach of regressors/scaler ---
 
 # ensure camera resolution applied to the real cv2 capture object
-try:
+""" try:
     real_cap = getattr(cap, "cap", cap)
     real_cap.set(cv2.CAP_PROP_FRAME_WIDTH, int(CAP_WIDTH))
     real_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, int(CAP_HEIGHT))
@@ -118,15 +144,15 @@ try:
         print("warning: no frame after setting resolution; got ret0=", ret0)
 except Exception as e:
     print("warning setting capture resolution:", e)
-
-
+ """
+""" 
 clb_dict = getattr(gestures, "clb", None)
 clb = clb_dict.get(context_tag, None)
 clb.reg_x = reg_x
 clb.reg_y = reg_y
 clb.scaler = scaler
 
-
+ """
 # try to get device FPS; fallback to 60
 cap_fps = cap.cap.get(cv2.CAP_PROP_FPS)
 try:
@@ -159,13 +185,26 @@ _debug_frames = 20
 iter_count = 0
 
 print("Starting V3 tracking loop. Press Ctrl to stop.")
+
+clock = pygame.time.Clock()
+#Pygame UI
+pygame.init()
+pygame.font.init()
+screen = pygame.display.set_mode((screen_w, screen_h))
+hwnd = pygame.display.get_wm_info()["window"]
+
+# Getting information of the current active window
+win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, win32gui.GetWindowLong(
+                       hwnd, win32con.GWL_EXSTYLE) | win32con.WS_EX_LAYERED)
+
+win32gui.SetLayeredWindowAttributes(hwnd, win32api.RGB(255, 0, 128), 0, win32con.LWA_COLORKEY)
 try:
     while True:
         # stop via keyboard (non-blocking check)
+        screen.fill((255, 0, 128)) 
         if keyboard.is_pressed('ctrl'):
             print("Ctrl pressed -> stopping.")
             break
-
         # read frame robustly
         try:
             ret, frame = _cap.read()
@@ -182,6 +221,7 @@ try:
             if iter_count > MAX_ITER:
                 print("Max iterations reached without valid frames.")
                 break
+            clock.tick(60)
             continue
 
         # debug: show camera frame size first frames
@@ -201,14 +241,14 @@ try:
             evt, _ = gestures.step(frame_rgb, False, screen_w, screen_h, context=context_tag)
         except Exception as ex:
             warnings.warn(f"gestures.step() error: {ex}")
-            time.sleep(frame_time)
+            clock.tick(60)
             continue
 
         # validate evt and point
         if evt is None or getattr(evt, "point", None) is None:
             # optionally debug
             # print("No event or point")
-            time.sleep(frame_time)
+            clock.tick(60)
             continue
 
         """ raw = np.asarray(evt.point, dtype=float).flatten()
@@ -259,6 +299,7 @@ try:
             mouse.move(x, y, absolute=True, duration=0)
         except Exception as e:
             warnings.warn(f"mouse.move error: {e}")
+            clock.tick(60)
 
         # optional debug print (limited)
         """         
@@ -266,8 +307,9 @@ try:
             print(f"raw={raw} -> px/py=({px:.1f},{py:.1f}) -> clipped=({x},{y})") """
 
         # rate control
-        time.sleep(frame_time)
-        iter_count += 1
+        clock.tick(60)
+        pygame.display.flip()
+        #   iter_count += 1
 
 except KeyboardInterrupt:
     print("Tracking interrupted by user.")
@@ -281,4 +323,3 @@ finally:
         pass
     print("Tracking stopped.")
 # ...existing code...
-

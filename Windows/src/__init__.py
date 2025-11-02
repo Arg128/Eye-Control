@@ -4,7 +4,7 @@ import ctypes
 import os
 import sys
 import tkinter as tk
-from tkinter import PhotoImage, ttk, messagebox
+from tkinter import PhotoImage, StringVar, ttk, messagebox
 import math
 try:
     from PIL import Image, ImageTk
@@ -76,7 +76,7 @@ class EyeControlApp_TK:
         self.master = master
         self.win = None
         self.w = int(WIDTH / 2)
-        self.h = int(HEIGHT / 2) + 40
+        self.h = int(HEIGHT / 2) + 140
         master.geometry(f"{self.w}x{self.h}")
         master.title("Eye Motion - V2 (Tk)")
         if "nt" == os.name:
@@ -139,6 +139,8 @@ class EyeControlApp_TK:
         footer.pack(fill="x", pady=(6,0))
 
     def sub_menu(self, ver=None):
+        if self.isWindowEnable:
+            return
         self.isWindowEnable = True
         win = tk.Toplevel(self.master)
         x = math.floor((self.w - (self.w)/2))
@@ -148,7 +150,11 @@ class EyeControlApp_TK:
 
         elem_1 = ttk.Label(win,text="Aviso:")
         info = tk.Text(win, width=50, height=7, wrap="word")
-        info.insert('1.0', '1) Asegúrate de estar en un entorno bien iluminado\n2) Mirar directamente a la cámara durante la calibración para obtener mejores resultados.\n3) Recomendable no usar ningun accesorio o impedimento en el lugar de los ojos.\n\nFinalmente teclé \'CTRL + Q\' para salir y mire fijamente la camara para escanear ultimamente su rostro.')
+        info.insert('1.0', '1) Asegúrate de estar en un entorno bien iluminado\n' \
+        '2) Mirar directamente a la cámara durante la calibración para obtener mejores resultados.\n' \
+        '3) Recomendable no usar ningun accesorio o impedimento en el lugar de los ojos.\n' \
+        '4) Asegurarse de tener el rostro durante todo el momento de execución' \
+        '\n\nFinalmente teclé \'CTRL\' para salir y mire fijamente la camara para escanear ultimamente su rostro.')
         elem_2 = ttk.Label(win,text="Número de puntos:")
 
         # guardar widget en la instancia para que calibrate_v3_action lo lea
@@ -158,7 +164,16 @@ class EyeControlApp_TK:
         elem_3 = ttk.Label(win,text="¿Crear nueva calibración?:")
         self.newCalibrationVar = tk.BooleanVar(value=True)
         check_box = ttk.Checkbutton(win, variable=self.newCalibrationVar)
-        btn_start_calibration = ttk.Button(win, text="Iniciar calibración", command=lambda: self.calibrate(ver=ver, points=self.pointsObject.get("1.0",'end-1c'), bool=self.newCalibrationVar.get()))
+
+        elem_4 = ttk.Label(win,text="Radio de aceptación (px):")
+        options = ["70", "210", "400", "700"]
+
+        selected_option = StringVar()
+        selected_option.set(options[0])  # Set default value
+
+        option_menu = ttk.OptionMenu(win, selected_option, *options)
+
+        btn_start_calibration = ttk.Button(win, text="Iniciar calibración", command=lambda: self.calibrate(ver=ver, points=self.pointsObject.get("1.0",'end-1c'), bool=self.newCalibrationVar.get(), radio=selected_option.get()))
         pross = subprocess.Popen(["py", "-3.11", os.path.join(os.path.dirname(__file__),"face_check.py"), "--show", "--frames","40","--threshold","0.9"], creationflags=subprocess.CREATE_NEW_CONSOLE)
 
         if pross.wait() == 0:
@@ -168,6 +183,8 @@ class EyeControlApp_TK:
             self.pointsObject.pack(padx=7, pady=10)
             elem_3.pack(padx=7, pady=7)
             check_box.pack(padx=7, pady=7)
+            elem_4.pack(padx=7, pady=7)
+            option_menu.pack(padx=7, pady=7)
             btn_start_calibration.pack(padx=10, pady=(0,10))
             print("Face check passed. You can proceed to calibration.")
 
@@ -206,16 +223,26 @@ class EyeControlApp_TK:
         # placeholder: ejecutar V3 app si existe
         run_subprocess(os.path.join(os.path.dirname(__file__),"V3_Windows_Tracking_2.1.py"))
 
-    def calibrate(self, ver=None, points=None, bool=None):
+    def calibrate(self, ver=None, points=None, bool=None, radio=None):
         # usar Toplevel en vez de crear otra raíz Tk()
-        if points is None and bool is None:
+        if points is None and bool is None and radio is None:
             if not self.isWindowEnable:
                 self.sub_menu(ver=ver)
         else:
+            if int(radio) < 70:
+                radio = 70
+            
+            try:
+                points = int(points)
+            except ValueError:
+                points = 20
+            if int(points) < 0:
+                points = 0
+
             if ver == "V2":
-                run_subprocess(os.path.join(os.path.dirname(__file__), "V2_Windows_Calibrate.py"), [str(points), str(bool)])
+                run_subprocess(os.path.join(os.path.dirname(__file__), "V2_Windows_Calibrate.py"), [str(points), str(bool), str(radio)])
             elif ver == "V3":
-                run_subprocess(os.path.join(os.path.dirname(__file__), "V3_Windows_Calibrate.py"), [str(points), str(bool)])
+                run_subprocess(os.path.join(os.path.dirname(__file__), "V3_Windows_Calibrate.py"), [str(points), str(bool), str(radio)])
             
     def check_face(self):
         pass

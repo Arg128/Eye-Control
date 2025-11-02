@@ -3,9 +3,15 @@ import sys
 import glob
 import json
 import time
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+
+try:
+    from scipy.ndimage import gaussian_filter
+except Exception:
+    gaussian_filter = None
 
 # Config: paths (ajusta si necesitas)
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -18,120 +24,143 @@ def find_latest_csv(dirpath):
     return files[0] if files else None
 
 def load_gaze_csv(path):
-    # Intenta leer columnas comunes:
-    data = np.genfromtxt(path, delimiter=",", dtype=float, skip_header=1, invalid_raise=False)
-    if data.size == 0:
+    # try to read numeric CSV, skip header
+    try:
+        data = np.genfromtxt(path, delimiter=",", dtype=float, skip_header=1, invalid_raise=False)
+    except Exception:
+        data = None
+    if data is None or data.size == 0:
         return None
-    # heurístico: buscar columnas con rango grande (x,y)
     if data.ndim == 1:
         data = data.reshape(1, -1)
-    # asumimos que columnas contienen timestamp, x, y en algún orden; tratamos de detectar
-    colmins = np.nanmin(data, axis=0)
-    colmaxs = np.nanmax(data, axis=0)
-    ranges = colmaxs - colmins
-    # asumimos que x/y son columnas con rango > 0 y dentro de pantallas (0..5000)
-    candidates = [i for i, r in enumerate(ranges) if r > 1 and r < 20000]
-    if len(candidates) >= 2:
-        # tomar las dos con rango mayor como x,y (no perfecto pero funciona para logs típicos)
-        idx = sorted(candidates, key=lambda i: ranges[i], reverse=True)[:2]
-        xs = data[:, idx[0]]
-        ys = data[:, idx[1]]
-        # si los valores parecen fuera de pantalla (muy grandes) normalizamos si posible
-        return {"x": xs, "y": ys, "raw": data}
-    return None
+    # detect two best candidate columns for x,y by range
+    mins = np.nanmin(data, axis=0)
+    maxs = np.nanmax(data, axis=0)
+    ranges = maxs - mins
+    # choose two columns with largest ranges
+    cand = np.argsort(ranges)[::-1]
+    if len(cand) < 2:
+        return None
+    x_idx, y_idx = cand[0], cand[1]
+    xs = data[:, x_idx]
+    ys = data[:, y_idx]
+    return {"x": xs, "y": ys, "raw": data, "cols": (x_idx, y_idx)}
 
-def compute_time_in_app(timestamps):
-    # timestamps en segundos o ms: intentar detectar
-    if np.median(timestamps) > 1e6:
-        # probablemente ms -> convertir a s
-        timestamps = timestamps / 1000.0
-    # tiempo total = last - first (simple)
-    return float(np.nanmax(timestamps) - np.nanmin(timestamps))
+def compute_time_seconds(arr):
+    # guess timestamps column if present (first column)
+    try:
+        t = np.asarray(arr).astype(float)
+        if np.median(t) > 1e6:  # ms
+            t = t / 1000.0
+        return float(np.nanmax(t) - np.nanmin(t))
+    except Exception:
+        return 0.0
 
-def make_heatmap(xs, ys, xdim=1920, ydim=1080, bins=80):
-    pts = np.vstack([xs, ys]).T
-    heatmap, xedges, yedges = np.histogram2d(pts[:,0], pts[:,1], bins=bins, range=[[0, xdim], [0, ydim]])
-    return heatmap.T, xedges, yedges
+def make_heatmap(xs, ys, screen_w, screen_h, bins=80, smooth_sigma=None):
+    # clip points to screen extents first
+    xs_cl = np.clip(xs, 0, screen_w)
+    ys_cl = np.clip(ys, 0, screen_h)
+    H, xedges, yedges = np.histogram2d(xs_cl, ys_cl, bins=bins, range=[[0, screen_w], [0, screen_h]])
+    # H shape is (xbins, ybins) -- transpose for image origin lower
+    H = H.T  # now shape (ybins, xbins)
+    if smooth_sigma and gaussian_filter is not None:
+        H = gaussian_filter(H, sigma=smooth_sigma)
+    return H, xedges, yedges
 
-def top_regions(heatmap, xedges, yedges, top_k=5):
-    flat = heatmap.flatten()
+def top_regions_from_heatmap(H, xedges, yedges, top_k=5):
+    flat = H.flatten()
     idx = np.argsort(flat)[::-1][:top_k]
     regs = []
-    nx, ny = heatmap.shape
+    ny, nx = H.shape
     for i in idx:
-        r = i // ny
-        c = i % ny
+        r = i // nx
+        c = i % nx
         x0, x1 = xedges[c], xedges[c+1]
         y0, y1 = yedges[r], yedges[r+1]
-        regs.append(((x0,x1),(y0,y1), int(flat[i])))
+        regs.append({"box": [float(x0), float(x1), float(y0), float(y1)], "count": int(flat[i])})
     return regs
 
-def save_results_png_pdf(heatmap, xedges, yedges, xs, ys, out_dir):
-    timestamp = int(time.time())
-    png_path = os.path.join(out_dir, f"heatmap_{timestamp}.png")
-    pdf_path = os.path.join(out_dir, f"report_{timestamp}.pdf")
-
+def save_heatmap_png(H, xedges, yedges, out_path, cmap="hot"):
     fig, ax = plt.subplots(figsize=(10,6))
-    extent = [xedges[0], xedges[-1], yedges[-1], yedges[0]]
-    ax.imshow(heatmap, cmap="hot", origin="lower", extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]])
+    extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+    ax.imshow(H, cmap=cmap, origin="lower", extent=extent, aspect='auto')
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
     ax.set_title("Gaze heatmap")
-    ax.set_xlim(xedges[0], xedges[-1])
-    ax.set_ylim(yedges[0], yedges[-1])
-    plt.savefig(png_path, dpi=150, bbox_inches="tight")
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
+    return out_path
 
-    # PDF with image + simple stats
+def save_report_pdf(pdf_path, png_path, stats):
     with PdfPages(pdf_path) as pdf:
-        fig, ax = plt.subplots(figsize=(10,12))
+        fig, ax = plt.subplots(figsize=(11,8.5))
         ax.axis("off")
         ax.text(0.5, 0.95, "EyeGestures - Reporte de uso", ha="center", va="top", fontsize=16)
-        ax.text(0.02, 0.88, f"Total samples: {len(xs)}", fontsize=10)
+        ax.text(0.02, 0.88, f"CSV: {stats.get('csv','-')}", fontsize=10)
+        ax.text(0.02, 0.84, f"Samples: {stats.get('samples',0)}", fontsize=10)
+        ax.text(0.02, 0.80, f"Total time (s): {stats.get('total_time_s',0):.2f}", fontsize=10)
+        top = stats.get("top_regions", [])
+        for i, r in enumerate(top):
+            ax.text(0.02, 0.76 - i*0.04, f"Top {i+1}: box={r['box']} count={r['count']}", fontsize=9)
         pdf.savefig(fig); plt.close(fig)
-
-        # add heatmap page
-        fig2, ax2 = plt.subplots(figsize=(10,6))
-        ax2.imshow(heatmap, cmap="hot", origin="lower", extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]])
-        ax2.set_title("Heatmap")
+        # heatmap page
+        img = plt.imread(png_path)
+        fig2, ax2 = plt.subplots(figsize=(11,8.5))
+        ax2.imshow(img)
+        ax2.axis("off")
         pdf.savefig(fig2); plt.close(fig2)
-
-    return png_path, pdf_path
+    return pdf_path
 
 def main():
-    csv = find_latest_csv(RECORDINGS_DIR)
-    if not csv:
-        print(json.dumps({"error":"no_csv_found"}))
+    p = argparse.ArgumentParser(description="Generate gaze heatmap + report")
+    p.add_argument("--input", default=None, help="CSV file or directory (default: recordings/ in project root)")
+    p.add_argument("--out", default=None, help="output folder (default: Stats/output in this module)")
+    p.add_argument("--bins", type=int, default=80)
+    p.add_argument("--smooth", type=float, default=1.2, help="gaussian sigma (0 disables smoothing)")
+    p.add_argument("--screen-w", type=int, default=1920)
+    p.add_argument("--screen-h", type=int, default=1080)
+    p.add_argument("--top-k", type=int, default=5)
+    args = p.parse_args()
+
+    script_dir = os.path.dirname(__file__)
+    default_recordings = os.path.abspath(os.path.join(script_dir, "..", "..", "recordings"))
+    inp = args.input or default_recordings
+    outdir = args.out or os.path.join(script_dir, "output")
+    os.makedirs(outdir, exist_ok=True)
+
+    csv_file = inp if os.path.isfile(inp) else find_latest_csv(inp)
+    if csv_file is None:
+        print(json.dumps({"error": "no_csv_found", "searched": inp}))
         sys.exit(2)
-    gaze = load_gaze_csv(csv)
+
+    gaze = load_gaze_csv(csv_file)
     if gaze is None:
-        print(json.dumps({"error":"cannot_parse_csv"}))
+        print(json.dumps({"error": "cannot_parse_csv", "csv": csv_file}))
         sys.exit(2)
 
     xs = gaze["x"]
     ys = gaze["y"]
-    # if timestamps exist in raw data first col, try to estimate time
-    timestamps = None
-    try:
-        timestamps = gaze["raw"][:,0]
-    except Exception:
-        timestamps = np.arange(len(xs))
+    raw = gaze.get("raw", None)
+    total_time = 0.0
+    if raw is not None:
+        try:
+            total_time = compute_time_seconds(raw[:,0])
+        except Exception:
+            total_time = 0.0
 
-    total_time = compute_time_in_app(timestamps)
-    # assume screen size standard; optionally read from metadata
-    screen_w, screen_h = 1920, 1080
-    heatmap, xedges, yedges = make_heatmap(xs, ys, xdim=screen_w, ydim=screen_h, bins=80)
-    regions = top_regions(heatmap, xedges, yedges, top_k=5)
+    H, xedges, yedges = make_heatmap(xs, ys, args.screen_w, args.screen_h, bins=args.bins,
+                                     smooth_sigma=(args.smooth if args.smooth and args.smooth>0 else None))
 
-    png_path, pdf_path = save_results_png_pdf(heatmap, xedges, yedges, xs, ys, OUT_DIR)
+    top_regions = top_regions_from_heatmap(H, xedges, yedges, top_k=args.top_k)
 
-    result = {
-        "csv": csv,
-        "samples": int(len(xs)),
-        "total_time_s": float(total_time),
-        "top_regions": regions,
-        "png": png_path,
-        "pdf": pdf_path
-    }
-    print(json.dumps(result))
+    timestamp = int(time.time())
+    png_path = os.path.join(outdir, f"heatmap_{timestamp}.png")
+    pdf_path = os.path.join(outdir, f"report_{timestamp}.pdf")
+    save_heatmap_png(H, xedges, yedges, png_path)
+    stats = {"csv": csv_file, "samples": int(len(xs)), "total_time_s": float(total_time), "top_regions": top_regions, "png": png_path, "pdf": pdf_path}
+    save_report_pdf(pdf_path, png_path, stats)
+
+    print(json.dumps(stats))
     sys.exit(0)
 
 if __name__ == "__main__":

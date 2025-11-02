@@ -151,6 +151,7 @@ while running:
         if model_bytes:
             with open(MODEL_PATH, "wb") as f:
                 f.write(model_bytes)
+            f.close()
         saved = True
         # cerramos la UI y salimos del loop para dejar solo tracking en otro script
         #   pygame.quit()

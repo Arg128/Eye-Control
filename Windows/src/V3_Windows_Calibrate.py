@@ -10,20 +10,23 @@ import ctypes
 import time  # wait a bit for camera to be ready
 import win32con
 import win32gui
+import pickle
 
 import win32api
 from eyeGestures.utils import VideoCapture
 from eyeGestures import EyeGestures_v3
 from sklearn.linear_model import Ridge
-from calib_io import save_calibration_npz, save_sklearn_model
+from calib_io import save_calibration_csv, save_calibration_npz, save_sklearn_model
+import keyboard
 
 from check import ensure_face_present, open_video_source
 
 context_tag = "eye_Tracker_v3"
 
+radio = int(sys.argv[1:][2])
 # init gestures (try passing calibration_radius if supported)
 try:
-    gestures = EyeGestures_v3(calibration_radius=70)
+    gestures = EyeGestures_v3(calibration_radius=radio)
 except TypeError:
     gestures = EyeGestures_v3()
 
@@ -94,6 +97,7 @@ print(sys.argv[1:][0])
 print(f"Recibí los argumentos: {(sys.argv[1:])}")
 max_points = int(sys.argv[1:][0])
 saved = bool(sys.argv[1:][1])
+
 running = True
 
 CHANGERADIO = True
@@ -108,6 +112,10 @@ print("Quick bias calibration: mira al centro de la pantalla y pulsa Enter")
 while running:
          # Transparent background
     screen.fill((255,0,128)) 
+            # stop via keyboard (non-blocking check)
+    if keyboard.is_pressed('ctrl'):
+        print("Ctrl pressed -> stopping.")
+        break
     for e in pygame.event.get():
         if e.type == pygame.QUIT:
             running = False
@@ -121,21 +129,33 @@ while running:
         ret, frame = cap.read()
         print("SHAPE",frame.shape)
     except Exception:
+        iter += 1
         print("Warning: unable to read from camera")
         screen.blit(pygame.font.SysFont(None, 24).render("Warning: unable to read from camera", True, (255, 255, 255)), (10, 10))
         continue
+    print("One")
     if not ret or frame is None:
         continue
-    
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    frame_rgb = np.rot90(frame_rgb)
+    print("Two")
+    try:
+        if frame is not None:
+            print("Three")
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_rgb = np.rot90(frame_rgb)
+    except Exception as ex:
+        print("Three - Exception")
+        print("Error converting frame to RGB:", ex)
+        iter += 1
+        screen.blit(pygame.font.SysFont(None, 24).render("Warning: unable to process camera frame", True, (255, 255, 255)), (10, 10))
+        clock.tick(60)
+        continue
     #   frame_rgb = np.flip(frame_rgb, axis=1)
     calibrate = (iterator <= max_points)
 
     # single step call
     try:
+        print("Four")
         event, calibration = gestures.step(frame_rgb, calibrate, screen_width, screen_height, context=context_tag)
-        screen.blit(pygame.font.SysFont(None, 24).render("Warning: unable to read from Gestures", True, (255, 255, 255)), (10, 10))
     except Exception as ex:
         print("Error during gestures.step():", ex)
         screen.blit(pygame.font.SysFont(None, 24).render("Warning: unable to read gestures", True, (255, 255, 255)), (10, 10))
@@ -145,10 +165,12 @@ while running:
     # prepare small preview
         # no valid data this frame
     if event is None and calibration is None:
+        print("Five")
         pygame.display.flip()
         clock.tick(60)
         continue
 
+    print("Six")
     surf = None
     try:
         surf = pygame.surfarray.make_surface(frame_rgb)
@@ -206,6 +228,8 @@ while running:
                         clb_obj.acceptance_radius = max(min_acc_radius,
                                                         int(clb_obj.acceptance_radius * reduction_factor))
         except Exception:
+            print("Error ajustando radios de calibración")
+            iter += 1
             pass
         """     # during calibration show target and progress
     if calibration is not None and calibrate:
@@ -254,16 +278,39 @@ while running:
     clock.tick(60)
 if iterator >= max_points and saved:
         out_dir = os.path.join(os.path.dirname(__file__), "saved")
+        tmp_path = os.path.join(out_dir, "my_file_v3.bin") + ".tmp"
         os.makedirs(out_dir, exist_ok=True)
         clb_dict = getattr(gestures, "clb", None)
         clb = clb_dict[context_tag] 
         # clb es tu calibrador con atributos X, Y_x, Y_y y reg_x/reg_y/scaler si existen
-        npz_path = os.path.join(os.path.dirname(__file__), "saved", "calib_v3_data.npz")
-        save_calibration_npz(npz_path, clb.X, clb.Y_x, clb.Y_y, meta={"screen": (1920, 1080)})
+        #npz_path = os.path.join(os.path.dirname(__file__), "saved", "calib_v3_data.npz")
+        dataNuevo = gestures.saveModel(context=context_tag)
+        print(dataNuevo)
+        time.sleep(14)
+        if dataNuevo:
+                # ensure we have raw bytes
+            if not isinstance(dataNuevo, (bytes, bytearray)):
+                data_bytes = pickle.dumps(dataNuevo)
+            else:
+                print("Yo espero de que caigas justo aquí")
+                data_bytes = bytes(dataNuevo)
+
+            # atomic write with flush+fsync
+            with open(tmp_path, "wb") as f:
+                f.write(data_bytes)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, os.path.join(out_dir, "my_file_v3.bin"))
+            #with open(os.path.join(out_dir, 'my_file_v3.bin'), 'wb') as file:
+            #    file.write(dataNuevo)
+            #file.close()
+
+        #   save_calibration_npz(npz_path, clb.X, clb.Y_x, clb.Y_y, meta={"screen": (1920, 1080)})
 
         # opcional: guardar también los modelos entrenados
-        save_sklearn_model(os.path.join(os.path.dirname(__file__), "saved", "reg_x.joblib"), clb.reg_x)
-        save_sklearn_model(os.path.join(os.path.dirname(__file__), "saved", "reg_y.joblib"), clb.reg_y)
+        #   save_sklearn_model(os.path.join(os.path.dirname(__file__), "saved", "reg_x.joblib"), clb.reg_x)
+        #   save_sklearn_model(os.path.join(os.path.dirname(__file__), "saved", "reg_y.joblib"), clb.reg_y)
+        #   save_calibration_csv(os.path.join(os.path.dirname(__file__), "saved", "calib_v3_data.csv"), clb.X, clb.Y_x, clb.Y_y, header=None)
         if hasattr(clb, "scaler") and clb.scaler is not None:
             save_sklearn_model(os.path.join(out_dir, "scaler.joblib"), clb.scaler)
 
