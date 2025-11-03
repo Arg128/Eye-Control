@@ -117,6 +117,10 @@ function createAdvancedControls() {
             </button>
         </div>
         <div style="margin: 15px 0 10px 0; padding-top: 10px; border-top: 1px solid rgba(168, 218, 220, 0.3);">
+            <label style="display: block; margin-bottom: 5px; color: #f1faee;">Activar Eye Gestures:</label>
+            <input type="checkbox" id="chkJustTrackWithEyes" style="width: 100%;">
+        </div>
+        <div style="margin: 15px 0 10px 0; padding-top: 10px; border-top: 1px solid rgba(168, 218, 220, 0.3);">
             <label style="display: block; margin-bottom: 5px; color: #f1faee;">📊 Precisión del Filtro:</label>
             <input type="range" id="filter-precision" min="1" max="20" value="5" style="width: 100%;">
             <small id="filter-value" style="color: #a8dadc;">Valor: 5</small>
@@ -157,7 +161,7 @@ function createAdvancedControls() {
     document.getElementById('toggle-reading-btn').addEventListener('click', toggleReading);
     document.getElementById('clear-trail-btn').addEventListener('click', clearTrail);
     document.getElementById('filter-precision').addEventListener('input', updateFilterPrecision);
-    
+     document.getElementById('chkJustTrackWithEyes').addEventListener('change', changeValue);
     // Actualizar UI inicial ya que el rastro está activado por defecto
     const trailBtn = document.getElementById('toggle-trail-btn');
     const heatmapBtn = document.getElementById('toggle-heatmap-btn');
@@ -165,6 +169,36 @@ function createAdvancedControls() {
         trailBtn.textContent = '👁️ Rastro de Mirada: ON';
         trailBtn.classList.add('active');
         heatmapBtn.disabled = false;
+    }
+}
+window.advancedControls = window.advancedControls || {};
+
+function _sysMouseToGame(e) {
+    const x = e.clientX;
+    const y = e.clientY;
+    if (currentGame && typeof currentGame.onGaze === 'function') {
+        currentGame.onGaze(x, y);
+    }
+}
+
+function changeValue(){
+    elem = document.getElementById('chkJustTrackWithEyes')
+    window.advancedControls.justTrackWithEyes = elem.checked;
+
+    // si globalGazeTrail ya existe, pedirle cambiar de modo
+    valueBool = document.getElementById('chkJustTrackWithEyes').checked
+    if (window.globalGazeTrail && typeof window.globalGazeTrail.setMode === 'function') {
+        window.globalGazeTrail.setMode(!valueBool ? 'justTrackWithEyes' : 'eyeGestures');
+    }
+
+    if (!valueBool) {
+        // stop EyeGestures if running (best-effort)
+        try { if (eyeGestures && typeof eyeGestures.stop === 'function') eyeGestures.stop(); } catch(e){}
+        // route system mouse to games
+        window.addEventListener('mousemove', _sysMouseToGame, { passive: true });
+    } else {
+        window.removeEventListener('mousemove', _sysMouseToGame);
+        // optionally re-init EyeGestures later when starting a game that needs it
     }
 }
 
@@ -552,9 +586,9 @@ function showAttentionWarning() {
 
 function startGame(gameType) {
     console.log('Iniciando juego:', gameType);
-    
+    valueBool = document.getElementById('chkJustTrackWithEyes').checked
     // Primero inicializar EyeGestures si no está listo
-    if (!eyeGestures) {
+    if (!eyeGestures && valueBool) {
         const statusEl = document.getElementById('status');
         statusEl.textContent = '⏳ Preparando sistema...';
         
@@ -579,7 +613,7 @@ function setupAndStartGame(gameType) {
     
     // Ocultar menú principal
     document.getElementById('main-menu').style.display = 'none';
-    
+    let useEyeMouse = document.getElementById('chkJustTrackWithEyes').checked;
     // Mostrar contenedor de juego
     const gameContainer = document.getElementById('game-container');
     gameContainer.style.display = 'block';
@@ -600,9 +634,8 @@ function setupAndStartGame(gameType) {
     // Resetear puntuación
     document.getElementById('score').textContent = '0';
     document.getElementById('game-info').innerHTML = '';
-    
     // SI NO ESTÁ CALIBRADO, PRIMERO CALIBRAR
-    if (!isCalibrated && eyeGestures) {
+    if (!isCalibrated && useEyeMouse) {
         console.log('Iniciando calibración...');
         
         // Mostrar mensaje
@@ -621,16 +654,13 @@ function setupAndStartGame(gameType) {
                 isCalibrated = true;
                 console.log('✅ Calibración completada!');
                 
-                // Ahora sí, crear e iniciar el juego
                 createAndStartGame(gameType, canvas);
             }
         }, 500);
         
-    } else if (isCalibrated) {
-        // Ya está calibrado, crear e iniciar juego directamente
+    } else if (isCalibrated || !useEyeMouse) {
         createAndStartGame(gameType, canvas);
     } else {
-        // Error: no hay eyeGestures
         alert('❌ Error: Sistema de seguimiento no inicializado');
         backToMenu();
     }
@@ -639,11 +669,11 @@ function setupAndStartGame(gameType) {
 function createAndStartGame(gameType, canvas) {
     console.log('Creando juego:', gameType);
     
-    // Callback para el juego
     function gazeCallback(x, y) {
-        if (currentGame && currentGame.onGaze) {
+    if (currentGame && currentGame.onGaze) {
             currentGame.onGaze(x, y);
         }
+        print("X; Y 0 ", x + ', ' + y)
     }
     
     // Crear instancia del juego
@@ -684,14 +714,11 @@ function backToMenu() {
         currentGame = null;
     }
     
-    // Ocultar contenedor de juego
     document.getElementById('game-container').style.display = 'none';
     
-    // Mostrar menú principal
     document.getElementById('main-menu').style.display = 'block';
 }
 
-// Hacer funciones globales para los botones HTML
 window.startGame = startGame;
 window.backToMenu = backToMenu;
 window.testCamera = testCamera;

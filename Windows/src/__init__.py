@@ -144,7 +144,7 @@ class EyeControlApp_TK:
         self.isWindowEnable = True
         win = tk.Toplevel(self.master)
         x = math.floor((self.w - (self.w)/2))
-        y = math.floor((self.h - (self.h)*0.23))
+        y = math.floor((self.h - (self.h)*0.14))
         win.geometry(f"{x}x{y}")
         win.title("Calibración - Opciones")
 

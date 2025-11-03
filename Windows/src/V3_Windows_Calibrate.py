@@ -290,6 +290,7 @@ if iterator >= max_points and saved:
         if dataNuevo:
                 # ensure we have raw bytes
             if not isinstance(dataNuevo, (bytes, bytearray)):
+                print("Esto es un pickle aaAaAAAA")
                 data_bytes = pickle.dumps(dataNuevo)
             else:
                 print("Yo espero de que caigas justo aquí")
