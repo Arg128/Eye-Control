@@ -129,12 +129,16 @@ class EyeControlApp_TK:
         btn_calibrate_v3.grid(row=1, column=1, padx=4, pady=6, sticky="ew", rowspan=1)
 
         # Heatmap / Stats
-        btn_stats = ttk.Button(btn_frame, text="Estadisticas", command=self.generate_stats)
+        btn_stats = ttk.Button(btn_frame, text="Observar Puntos", command=self.generate_stats)
         btn_stats.grid(row=2, column=0, padx=4, pady=6, sticky="ew", rowspan=1)
 
         # Data export
         btn_data = ttk.Button(btn_frame, text="Mis Datos", command=self.download_data)
         btn_data.grid(row=2, column=1, columnspan=2, padx=6, pady=6, sticky="ew")
+
+        # Levantar servidor JS
+        btn_data = ttk.Button(btn_frame, text="PLAYGROUND", command=self.upgrate_server)
+        btn_data.grid(row=3, column=0, columnspan=4, padx=6, pady=6, sticky="ew")
 
         # make columns expand evenly
         btn_frame.columnconfigure(0, weight=1)
@@ -293,6 +297,45 @@ class EyeControlApp_TK:
             subprocess.Popen(["explorer", stats_dir])
         except Exception as e:
             tk.messagebox.showerror("Download", f"No se pudo abrir la carpeta: {e}")
+
+    def upgrate_server(self):
+        try:
+            # build normalized path to EyeGesturesLite directory
+            server_dir = os.path.normpath(os.path.join(os.curdir, "EyeGesturesLite"))
+            print("Server dir resolved to:", server_dir)
+            if not os.path.exists(server_dir) or not os.path.isdir(server_dir):
+                tk.messagebox.showerror("Server", f"No se encontró la carpeta del servidor: {server_dir}")
+                return
+
+            # check package.json to ensure it's a Node project
+            pkg = os.path.join(server_dir, "package.json")
+            if not os.path.exists(pkg):
+                tk.messagebox.showerror("Server", f"No se encontró package.json en: {server_dir}")
+                return
+            
+            server_dir = fr'{server_dir}'
+            print(server_dir)
+            #   os.chdir('EyeGesturesLite')
+            os.path.abspath(os.curdir)
+            os.chdir(os.path.dirname(__file__))
+            os.chdir('..')
+            print(os.getcwd())
+            os.chdir(os.path.join(os.path.abspath(os.curdir), 'EyeGesturesLite'))
+            print(os.getcwd())
+            server_dir = os.path.abspath(os.curdir)
+            print(server_dir)
+            # try to run `npm start` in that directory
+            try:
+                # use cwd so npm runs in project dir; open new console on Windows
+                subprocess.Popen(['npm',  'start'], cwd=server_dir, shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+                os.chdir('..')
+            except FileNotFoundError:
+                tk.messagebox.showerror("Server", "npm no está disponible en PATH. Instala Node.js y npm.")
+            except Exception as e:
+                tk.messagebox.showerror("Server", f"No se pudo iniciar el servidor: {e}")
+        except Exception as e:
+            tk.messagebox.showerror("Server", f"Error inesperado al lanzar servidor: {e}")
+            print("upgrate_server error:", e)
 
 
 # ...existing code...
