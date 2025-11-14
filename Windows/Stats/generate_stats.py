@@ -14,10 +14,10 @@ except Exception:
     gaussian_filter = None
 
 # Config: paths (ajusta si necesitas)
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-RECORDINGS_DIR = os.path.join(PROJECT_ROOT, "src", "saved")    # busca CSVs aquí
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+RECORDINGS_DIR = os.path.join(PROJECT_ROOT, "..", "saved")    # busca CSVs aquí
 OUT_DIR = os.path.join(RECORDINGS_DIR, "output")
-os.makedirs(OUT_DIR, exist_ok=True)
+#   os.makedirs(OUT_DIR, exist_ok=True)
 
 def find_latest_csv(dirpath):
     files = sorted(glob.glob(os.path.join(dirpath, "*.csv")), key=os.path.getmtime, reverse=True)
@@ -113,8 +113,8 @@ def save_report_pdf(pdf_path, png_path, stats):
 
 def main():
     p = argparse.ArgumentParser(description="Generate gaze heatmap + report")
-    p.add_argument("--input", default=RECORDINGS_DIR, help="CSV file or directory (default: recordings/ in project root)")
-    p.add_argument("--out", default=OUT_DIR, help="output folder (default: Stats/output in this module)")
+    p.add_argument("--input", default=None, help="CSV file or directory (default: recordings/ in project root)")
+    p.add_argument("--out", default=None, help="output folder (default: Stats/output in this module)")
     p.add_argument("--bins", type=int, default=80)
     p.add_argument("--smooth", type=float, default=1.2, help="gaussian sigma (0 disables smoothing)")
     p.add_argument("--screen-w", type=int, default=1920)
@@ -123,10 +123,8 @@ def main():
     args = p.parse_args()
 
     script_dir = os.path.dirname(__file__)
-    default_recordings = os.path.abspath(os.path.join(script_dir, "..", "..", "recordings"))
-    print(args.input)
-    print(default_recordings)
-    inp = args.input
+    default_recordings = os.path.abspath(os.path.join(script_dir, "..", "saved"))
+    inp = args.input or default_recordings
     outdir = args.out or os.path.join(script_dir, "output")
     os.makedirs(outdir, exist_ok=True)
 

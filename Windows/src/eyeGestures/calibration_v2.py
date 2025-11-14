@@ -42,48 +42,50 @@ class Calibrator:
         self.fit_coroutines = [] 
 
     def __getstate__(self):
-        """
-        Prepare a clean state for pickling: keep numeric/model data,
-        drop threads/locks and large or runtime-only objects.
-        """
+
         state = self.__dict__.copy()
-        # Remove non-picklable / runtime-only entries
-        for key in ("lock", "_worker", "fit_coroutines", "calcualtion_coroutine"):
-            if key in state:
-                del state[key]
+        #   state["calcualtion_coroutine"] = None
+        all_its_not_ok = True
+        while all_its_not_ok:
+            all_its_not_ok = False
+            for process in state["fit_coroutines"]:
+                if process.is_alive():
+                    all_its_not_ok = True
+                    break
+                
+        state["fit_coroutines"].clear()
+        del state["lock"]
+        del state["calcualtion_coroutine"]
         # Optionally compact large temps if present
+        """         
         if "__tmp_X" in state:
             del state["__tmp_X"]
         if "__tmp_Y_x" in state:
             del state["__tmp_Y_x"]
         if "__tmp_Y_y" in state:
-            del state["__tmp_Y_y"]
+            del state["__tmp_Y_y"] 
+        """
         return state
 
     def __setstate__(self, state):
-        """
-        Restore state and recreate necessary runtime objects.
-        Also validate regressors / scaler presence after unpickle.
-        """
+
         self.__dict__.update(state)
-        # Recreate lock and worker placeholders
-        import threading
         self.lock = threading.Lock()
-        self._worker = None
+        #   self._worker = None
         self.fit_coroutines = []
+        self.calcualtion_coroutine = threading.Thread(target=self.__async_post_fit)
 
         # Basic validation: ensure regressors / scaler were serialized
         def _is_fitted_estimator(est):
             if est is None:
                 return False
-            # common fitted attributes
             return any(hasattr(est, attr) for attr in ("coef_", "alpha_", "feature_importances_", "n_features_in_"))
 
         self.reg_x = getattr(self, "reg_x", None)
         self.reg_y = getattr(self, "reg_y", None)
-        self.scaler = getattr(self, "scaler", None)
 
         if not _is_fitted_estimator(self.reg_x) or not _is_fitted_estimator(self.reg_y):
+            raise Exception("NO SE PUEDE OBTENER DICHOS DATOS; CERRANDO PROCESO")
             # mark as not fitted so caller can retrain or trigger fallback
             self.fitted = False
             # keep X/Y if present so we can re-fit later
@@ -164,7 +166,7 @@ class Calibrator:
 
     def post_fit(self):
         if self.cv_not_set:
-            # self.calcualtion_coroutine.start()
+            # self.calcualtion_coroutine.start()            #IMPORTANTEEEE...
             self.cv_not_set = False
 
     def whichAlgorithm(self):
@@ -189,7 +191,7 @@ class Calibrator:
             self.Y_x = self.Y_x + self.__tmp_Y_x
             self.matrix.movePoint()
             self.__tmp_X = []
-            self.__tmp_Y_y = []
+            self.__tmp_Y_y = [] 
             self.__tmp_Y_x = []
 
     def isReadyToMove(self):

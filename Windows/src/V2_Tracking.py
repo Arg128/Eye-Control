@@ -1,8 +1,8 @@
 # Script headless: carga modelo y mueve el cursor (sin Pygame)
 from eyeGestures import EyeGestures_v2
 from eyeGestures.utils import VideoCapture
-import cv2
 import mouse
+import keyboard
 import os
 import ctypes
 import numpy as np
@@ -13,11 +13,8 @@ import cv2
 context_tag = "eye_Tracker"
 
 # obtener resolución de pantalla en Windows
-import ctypes
-user32 = ctypes.windll.user32
-screen_w = user32.GetSystemMetrics(0)
-screen_h = user32.GetSystemMetrics(1)
-
+screen_w = int(sys.argv[1:][0])
+screen_h = int(sys.argv[1:][1])
 #   screen_w = 1920
 #   screen_h = 1080
 
@@ -58,6 +55,9 @@ cap = VideoCapture(0)
 
 try:
     while True:
+        if keyboard.is_pressed('ctrl'):
+            print("Ctrl pressed -> stopping.")
+            break
         ret, frame = cap.read()
         if not ret or frame is None:
             continue

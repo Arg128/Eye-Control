@@ -11,7 +11,7 @@ import sys
 
 context_tag = "eye_Tracker"
 
-gestures = EyeGestures_v2(calibration_radius=49)
+gestures = EyeGestures_v2(calibration_radius=int(sys.argv[1:][2]))
 gestures.setClassicalImpact(2)
 cap = VideoCapture(0)
 calibrate = True
@@ -42,13 +42,13 @@ pygame.init()
 pygame.font.init()
 clock = pygame.time.Clock()
 
-# obtener resolución de pantalla en Windows
-import ctypes
-user32 = ctypes.windll.user32
-screen_width = user32.GetSystemMetrics(0)
-screen_height = user32.GetSystemMetrics(1)
-#   screen_width = 1920
-#   screen_height = 1080
+
+
+screen_width = int(sys.argv[1:][3])
+screen_height = int(sys.argv[1:][4])
+
+
+
 screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption("EyeGestures v2 - Calibración")
 font_size = 48

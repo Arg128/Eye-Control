@@ -3,7 +3,9 @@ import sys
 import glob
 import json
 import time
+import datetime
 import argparse
+from time import gmtime, strftime
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
@@ -14,10 +16,10 @@ except Exception:
     gaussian_filter = None
 
 # Config: paths (ajusta si necesitas)
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-RECORDINGS_DIR = os.path.join(PROJECT_ROOT, "src", "saved")    # busca CSVs aquí
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+RECORDINGS_DIR = os.path.join(PROJECT_ROOT, "saved")    # busca CSVs aquí
 OUT_DIR = os.path.join(RECORDINGS_DIR, "output")
-os.makedirs(OUT_DIR, exist_ok=True)
+#   os.makedirs(OUT_DIR, exist_ok=True)
 
 def find_latest_csv(dirpath):
     files = sorted(glob.glob(os.path.join(dirpath, "*.csv")), key=os.path.getmtime, reverse=True)
@@ -56,7 +58,7 @@ def compute_time_seconds(arr):
     except Exception:
         return 0.0
 
-def make_heatmap(xs, ys, screen_w, screen_h, bins=80, smooth_sigma=None):
+def make_heatmap(xs, ys, screen_w, screen_h, bins=80, smooth_sigma=None, custom_mode=False):
     # clip points to screen extents first
     xs_cl = np.clip(xs, 0, screen_w)
     ys_cl = np.clip(ys, 0, screen_h)
@@ -65,33 +67,59 @@ def make_heatmap(xs, ys, screen_w, screen_h, bins=80, smooth_sigma=None):
     H = H.T  # now shape (ybins, xbins)
     if smooth_sigma and gaussian_filter is not None:
         H = gaussian_filter(H, sigma=smooth_sigma)
-    return H, xedges, yedges
+    return {"hist" : H, "xedges": xedges, "yedges" : yedges}
 
-def top_regions_from_heatmap(H, xedges, yedges, top_k=5):
-    flat = H.flatten()
+def make_heat_v2(heat_obj, point_list):
+    hist = heat_obj.getHist()
+    hist_x = hist[0]
+    hist_y = hist[1]
+
+    axis = heat_obj.getAxis()
+
+    fig, ax = plt.subplots(figsize=(10,6))
+    fig, bx = plt.subplots(figsize=(10,6))
+    extent = [axis[0][0], axis[0][-1], axis[1][0], axis[1][-1]]
+
+    ax.set_xlabel("X")
+    bx.set_ylabel("Y")
+
+    ax.set_title("Histogram to X")
+    bx.set_title("Histogram to Y")
+    
+    return 
+
+def top_regions_from_heatmap(heat, top_k=5):
+    flat = heat["hist"].flatten()
     idx = np.argsort(flat)[::-1][:top_k]
     regs = []
-    ny, nx = H.shape
+    ny, nx = heat["hist"].shape
     for i in idx:
         r = i // nx
         c = i % nx
-        x0, x1 = xedges[c], xedges[c+1]
-        y0, y1 = yedges[r], yedges[r+1]
+        x0, x1 = heat["xedges"][c], heat["xedges"][c+1]
+        y0, y1 = heat["yedges"][r], heat["yedges"][r+1]
         regs.append({"box": [float(x0), float(x1), float(y0), float(y1)], "count": int(flat[i])})
     return regs
 
-def save_heatmap_png(H, xedges, yedges, out_path, cmap="hot"):
+def save_heatmap_png(heat, out_path, cmap="hot"):
     fig, ax = plt.subplots(figsize=(10,6))
-    extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
-    ax.imshow(H, cmap=cmap, origin="lower", extent=extent, aspect='auto')
+    timing = strftime("%a, %d %b %Y %H-%M-%S", gmtime())
+    extent = [heat["xedges"][0], heat["xedges"][-1], heat["yedges"][0], heat["yedges"][-1]]
+    ax.imshow(heat["hist"], cmap=cmap, origin="lower", extent=extent, aspect='auto')
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
     ax.set_title("Gaze heatmap")
+    out_path = os.path.join(out_path, fr"HEATMAP IMAGE {timing}.png")
+    """
+    out_path = str(out_path).replace(':', '-')
+    out_path = fr'{out_path}' """
     plt.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
     return out_path
 
 def save_report_pdf(pdf_path, png_path, stats):
+    timing = strftime("%a, %d %b %Y %H-%M-%S", gmtime())
+    pdf_path = os.path.join(pdf_path, f"Report {timing}.pdf")
     with PdfPages(pdf_path) as pdf:
         fig, ax = plt.subplots(figsize=(11,8.5))
         ax.axis("off")
@@ -122,12 +150,8 @@ def main():
     p.add_argument("--top-k", type=int, default=5)
     args = p.parse_args()
 
-    script_dir = os.path.dirname(__file__)
-    default_recordings = os.path.abspath(os.path.join(script_dir, "..", "..", "recordings"))
-    print(args.input)
-    print(default_recordings)
     inp = args.input
-    outdir = args.out or os.path.join(script_dir, "output")
+    outdir = args.out
     os.makedirs(outdir, exist_ok=True)
 
     csv_file = inp if os.path.isfile(inp) else find_latest_csv(inp)
@@ -150,17 +174,14 @@ def main():
         except Exception:
             total_time = 0.0
 
-    H, xedges, yedges = make_heatmap(xs, ys, args.screen_w, args.screen_h, bins=args.bins,
+    heat_dict = make_heatmap(xs, ys, args.screen_w, args.screen_h, bins=args.bins,
                                      smooth_sigma=(args.smooth if args.smooth and args.smooth>0 else None))
 
-    top_regions = top_regions_from_heatmap(H, xedges, yedges, top_k=args.top_k)
-
-    timestamp = int(time.time())
-    png_path = os.path.join(outdir, f"heatmap_{timestamp}.png")
-    pdf_path = os.path.join(outdir, f"report_{timestamp}.pdf")
-    save_heatmap_png(H, xedges, yedges, png_path)
-    stats = {"csv": csv_file, "samples": int(len(xs)), "total_time_s": float(total_time), "top_regions": top_regions, "png": png_path, "pdf": pdf_path}
-    save_report_pdf(pdf_path, png_path, stats)
+    print(args.top_k)
+    top_regions = top_regions_from_heatmap(heat_dict, top_k=args.top_k)
+    png_path = save_heatmap_png(heat_dict, outdir)
+    stats = {"csv": csv_file, "samples": int(len(xs)), "total_time_s": float(total_time), "top_regions": top_regions, "png": png_path}
+    save_report_pdf(outdir, png_path, stats)
 
     print(json.dumps(stats))
     sys.exit(0)

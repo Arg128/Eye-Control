@@ -19,9 +19,20 @@ def save_calibration_csv(path, X, Yx, Yy, header=None):
         if header:
             writer.writerow(header)
         # write row = [x0,x1,..., yx, yy]
-        for xi, yxi, yyi in zip(X, Yx, Yy):
-            row = list(np.asarray(xi).ravel()) + [float(yxi), float(yyi)]
-            writer.writerow(row)
+        zip_iter = None
+        row = None
+        if X is not None:
+            zip_iter = zip(X, Yx, Yy)
+            for xi, yxi, yyi in zip_iter:
+                row = [float(yxi), float(yyi)]
+                row.append(list(np.asarray(xi).ravel()))
+                print(row)
+                writer.writerow(row)
+        else:
+            zip_iter = zip(Yx, Yy)
+            for yxi, yyi in zip_iter:
+                row = [float(yxi), float(yyi)]
+                writer.writerow(row)
     return path
 
 def load_calibration_csv(path, n_features=None):
@@ -34,10 +45,17 @@ def load_calibration_csv(path, n_features=None):
             vals = [float(v) for v in row]
             if n_features is None:
                 # assume last two cols are Yx,Yy
-                n_features = len(vals) - 2
+                #   n_features = len(vals) - 2
+                n_features = 2
+            """
             X.append(vals[:n_features])
             Yx.append(vals[n_features])
-            Yy.append(vals[n_features + 1])
+            Yy.append(vals[n_features + 1]) """
+            Yx.append(vals[0])
+            Yy.append(vals[1])
+            if (len(vals) == 3):
+                X.append(vals[2])
+
     return np.array(X), np.array(Yx), np.array(Yy)
 
 def save_sklearn_model(path, model):

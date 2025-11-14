@@ -39,8 +39,6 @@ except TypeError:
 time.sleep(12)  # wait a bit for camera to be ready
 cap = open_video_source(0)
 
-# camera
-#cap = VideoCapture(0)
 
 # build calibration map (normalized 0..1)
 x = np.arange(0, 1.1, 0.2)
@@ -50,19 +48,17 @@ calibration_map = np.column_stack([xx.ravel(), yy.ravel()])
 np.random.shuffle(calibration_map)
 gestures.uploadCalibrationMap(calibration_map, context=context_tag)
 
-# Try to ensure context exists (avoid KeyError on step)
+
 if hasattr(gestures, "addContext"):
     try:
         gestures.addContext(context_tag)
     except Exception:
         pass
 
-# Screen resolution (Windows)
-user32 = ctypes.windll.user32
-screen_width = user32.GetSystemMetrics(0)
-screen_height = user32.GetSystemMetrics(1)
 
-# Pygame UI
+screen_width = int(sys.argv[1:][3])
+screen_height = int(sys.argv[1:][4])
+
 pygame.init()
 pygame.font.init()
 screen = pygame.display.set_mode((screen_width, screen_height))
@@ -174,7 +170,7 @@ while running:
     surf = None
     try:
         surf = pygame.surfarray.make_surface(frame_rgb)
-        surf = pygame.transform.scale(surf, (400, 400))
+        surf = pygame.transform.scale(surf, (210, 210))
     except Exception:
         surf = None
 
@@ -189,7 +185,7 @@ while running:
             ),
             (screen_width/2 - 200, 0)
         ) """
-        #   screen.blit(surf, (10, 10))
+    screen.blit(surf, (0, 10))
 
     # mover mouse si no hay evento de tracking (cuando se está dibujando calibración)
     if event and calibrate:
@@ -286,6 +282,9 @@ if iterator >= max_points and saved:
         #npz_path = os.path.join(os.path.dirname(__file__), "saved", "calib_v3_data.npz")
         dataNuevo = gestures.saveModel(context=context_tag)
         print(dataNuevo)
+        print(clb.X)
+        print(clb.Y_y)
+        print(clb.Y_x)
         time.sleep(14)
         if dataNuevo:
                 # ensure we have raw bytes
@@ -311,7 +310,7 @@ if iterator >= max_points and saved:
         # opcional: guardar también los modelos entrenados
         #   save_sklearn_model(os.path.join(os.path.dirname(__file__), "saved", "reg_x.joblib"), clb.reg_x)
         #   save_sklearn_model(os.path.join(os.path.dirname(__file__), "saved", "reg_y.joblib"), clb.reg_y)
-        #   save_calibration_csv(os.path.join(os.path.dirname(__file__), "saved", "calib_v3_data.csv"), clb.X, clb.Y_x, clb.Y_y, header=None)
+        save_calibration_csv(os.path.join(os.path.dirname(__file__), "saved", "calib_v3_data.csv"), clb.X, clb.Y_x, clb.Y_y, header=None)
         if hasattr(clb, "scaler") and clb.scaler is not None:
             save_sklearn_model(os.path.join(out_dir, "scaler.joblib"), clb.scaler)
 

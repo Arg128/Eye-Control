@@ -5,6 +5,7 @@ import os
 import sys
 import tkinter as tk
 from tkinter import PhotoImage, StringVar, ttk, messagebox
+from screeninfo import get_monitors
 import math
 try:
     from PIL import Image, ImageTk
@@ -12,9 +13,16 @@ except Exception:
     Image = None
     ImageTk = None
 
-user32 = ctypes.windll.user32
-WIDTH = user32.GetSystemMetrics(0)
-HEIGHT = user32.GetSystemMetrics(1)
+if os.name == "nt":
+    user32 = ctypes.windll.user32
+    WIDTH = user32.GetSystemMetrics(0)
+    HEIGHT = user32.GetSystemMetrics(1)
+else:
+    monitors = get_monitors()
+    for moni in monitors:
+        WIDTH = moni.width
+        HEIGHT = moni.height
+        break
 
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets")
 ASSETS_DIR2 = os.path.join(os.path.dirname(__file__), "assets")
@@ -121,7 +129,7 @@ class EyeControlApp_TK:
         btn_calibrate_v3.grid(row=1, column=1, padx=4, pady=6, sticky="ew", rowspan=1)
 
         # Heatmap / Stats
-        btn_stats = ttk.Button(btn_frame, text="Estadisticas", command=self.open_stats)
+        btn_stats = ttk.Button(btn_frame, text="Estadisticas", command=self.generate_stats)
         btn_stats.grid(row=2, column=0, padx=4, pady=6, sticky="ew", rowspan=1)
 
         # Data export
@@ -217,11 +225,11 @@ class EyeControlApp_TK:
     # button callbacks
     def play_v2(self):
         # ejecuta V2_Tracking.py en nueva consola
-        run_subprocess(os.path.join(os.path.dirname(__file__),"V2_Tracking.py"))
+        run_subprocess(os.path.join(os.path.dirname(__file__),"V2_Tracking.py"), [str(WIDTH), str(HEIGHT)])
 
     def play_v3(self):
         # placeholder: ejecutar V3 app si existe
-        run_subprocess(os.path.join(os.path.dirname(__file__),"V3_Windows_Tracking_2.1.py"))
+        run_subprocess(os.path.join(os.path.dirname(__file__),"V3_Tracking_2.1.py"), [str(WIDTH), str(HEIGHT)])
 
     def calibrate(self, ver=None, points=None, bool=None, radio=None):
         # usar Toplevel en vez de crear otra raíz Tk()
@@ -239,32 +247,36 @@ class EyeControlApp_TK:
             if int(points) < 0:
                 points = 0
 
-            if ver == "V2":
-                run_subprocess(os.path.join(os.path.dirname(__file__), "V2_Windows_Calibrate.py"), [str(points), str(bool), str(radio)])
-            elif ver == "V3":
-                run_subprocess(os.path.join(os.path.dirname(__file__), "V3_Windows_Calibrate.py"), [str(points), str(bool), str(radio)])
+            if not ver == "V2" and not ver == "V3":
+                raise NameError().add_note("No version alvariable to: " + ver)
+        
+            run_subprocess(os.path.join(os.path.dirname(__file__), f"{ver}_Windows_Calibrate.py"), [str(points), str(bool), str(radio), str(WIDTH), str(HEIGHT)])
             
     def check_face(self):
         pass
 
-    def open_stats(self):
+    def generate_stats(self):
         """
         Generate stats (heatmap + PDF) and open the Stats folder.
         This launches the Stats/generate_stats.py script (blocks until finished),
         then opens the folder so the user can download PNG/PDF.
         """
-        stats_dir = os.path.join(os.path.dirname(__file__), "Stats")
-        os.makedirs(stats_dir, exist_ok=True)
+        
+        stats_dir = os.path.join(os.path.dirname(__file__))
+        print(stats_dir)
+        #   os.makedirs(stats_dir, exist_ok=True)
         script_path = os.path.join(stats_dir, "generate_stats.py")
         if not os.path.exists(script_path):
-            messagebox.showerror("Stats", f"No se encontró {script_path}")
+            messagebox.showerror("ERROR", f"No se encontró {script_path}")
             return
 
         # run generator and wait
         try:
-            res = run_subprocess(script_path, argv=None, python=True, wait=True)
+            res = run_subprocess(script_path, argv=["--screen-w", WIDTH, "--screen-h", HEIGHT],
+                                  python=True, wait=True)
             if res.returncode == 0:
                 # abrir carpeta con resultados
+                stats_dir = os.path.join(stats_dir, 'saved', 'output')
                 subprocess.Popen(["explorer", stats_dir])
             else:
                 messagebox.showwarning("Stats", "La generación de estadísticas devolvió error.")
@@ -273,10 +285,10 @@ class EyeControlApp_TK:
 
     def download_data(self):
         """
-        Open the Stats folder in Explorer so user can copy/download PNG/PDF.
+        SHOW DATA INTO EYE GESTURES APLICATION.
         """
-        stats_dir = os.path.join(os.path.dirname(__file__), "Stats")
-        os.makedirs(stats_dir, exist_ok=True)
+        stats_dir = os.path.join(os.path.dirname(__file__), "saved", "output")
+        #   os.makedirs(stats_dir, exist_ok=True)
         try:
             subprocess.Popen(["explorer", stats_dir])
         except Exception as e:

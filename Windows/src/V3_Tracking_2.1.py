@@ -12,23 +12,26 @@ import keyboard
 import win32con
 import win32api
 import win32gui
+from screeninfo import get_monitors
 
 import pygame
+from collections import deque
+import itertools
 
 from eyeGestures import EyeGestures_v3
 from eyeGestures.utils import VideoCapture
 # archivo "check" que define ensure_face_present / open_video_source en tu repo
 from check import ensure_face_present, open_video_source
-from calib_io import load_calibration_npz, load_sklearn_model
+from calib_io import load_calibration_npz, load_sklearn_model, save_calibration_csv
 from sklearn.linear_model import Ridge
+from generate_stats import make_heatmap, save_heatmap_png
+from heatmap import Heatmap
 
 # --- config ---
 context_tag = "eye_Tracker_v3"
 
-# screen size
-user32 = ctypes.windll.user32
-screen_w = user32.GetSystemMetrics(0)
-screen_h = user32.GetSystemMetrics(1)
+screen_w = int(sys.argv[1:][0])
+screen_h = int(sys.argv[1:][1])
 
 # face check: run and wait (use sys.executable so the same Python is used)
 face_check_path = os.path.join(os.path.dirname(__file__), "face_check.py")
@@ -51,6 +54,9 @@ calibration_map = np.column_stack([xx.ravel(), yy.ravel()])
 np.random.shuffle(calibration_map)
 # load gestures & model
 gestures = EyeGestures_v3()
+xs = deque(maxlen=20000)
+ys = deque(maxlen=20000)
+
 if hasattr(gestures, "addContext"):
     try:
         gestures.addContext(context_tag)
@@ -187,6 +193,9 @@ iter_count = 0
 print("Starting V3 tracking loop. Press Ctrl to stop.")
 
 clock = pygame.time.Clock()
+counter = 0
+counter2 = 0
+MAX = 1000
 #Pygame UI
 pygame.init()
 pygame.font.init()
@@ -202,6 +211,7 @@ try:
     while True:
         # stop via keyboard (non-blocking check)
         screen.fill((255, 0, 128)) 
+        t_now = time.perf_counter()
         if keyboard.is_pressed('ctrl'):
             print("Ctrl pressed -> stopping.")
             break
@@ -294,9 +304,36 @@ try:
         #   y = int(np.clip(py, 0, screen_h - 1))
         x, y = evt.point[0], evt.point[1]
         print(evt.point)
+            
         # move mouse safely
         try:
+            x = abs(x)
+            y = abs(y)
+            y = screen_h if y > screen_h else y
+            x = screen_w if x > screen_w else x
             mouse.move(x, y, absolute=True, duration=0)
+
+            """             print(counter)
+            print(counter2)
+            if (counter < MAX):
+                counter += 1
+                xs.append(evt.point[0])
+                ys.append(evt.point[1])
+            else:
+                counter2 += 1
+                if (counter2 > MAX):
+                    counter = 0
+                    counter2 = 0 """
+            # time throttle
+            should_append = False
+            if not should_append:
+                if (t_now - globals().get('_last_app_time', 0.0)) >= 0.016:
+                    should_append = True
+            if should_append:
+                xs.append(evt.point[0])
+                ys.append(evt.point[1])
+                globals()['_last_app_time'] = t_now
+            
         except Exception as e:
             warnings.warn(f"mouse.move error: {e}")
             clock.tick(60)
@@ -311,7 +348,11 @@ try:
         pygame.display.flip()
         #   iter_count += 1
 
-except KeyboardInterrupt:
+        
+
+except KeyboardInterrupt as e:
+    time.sleep(7)
+    print(e)
     print("Tracking interrupted by user.")
 finally:
     try:
@@ -321,5 +362,76 @@ finally:
             cap.release()
     except Exception:
         pass
+
+    from generate_stats import make_heatmap, save_heatmap_png, save_report_pdf
+    from calib_io import save_calibration_csv
+    #   h_map = Heatmap(screen_h, screen_w, pointsList)
+    print(os.path.dirname(__file__))
+    out_path = os.path.join(os.path.dirname(__file__), 'saved', 'track_v3_data.csv')
+    xs_arr = np.asarray(xs, dtype=float)
+    ys_arr = np.asarray(ys, dtype=float)
+    csv_path = save_calibration_csv(out_path, None, xs_arr, ys_arr, header=None)
+    subprocess.Popen([sys.executable, os.path.join(os.path.dirname(__file__), 'generate_stats.py'), '--screen-h', str(screen_h), '--screen-w', str(screen_w), '--input', str(out_path)])
+    #   save_calibration_csv(out_path, None, xs_arr, ys_arr)
+    #   my_map =  h_map.getAcopladeHist()
+    """ heat_2 = make_heatmap(xs_arr, ys_arr, screen_h=screen_h, screen_w=screen_w, bins=80,
+                                     smooth_sigma=1.2)
+    heat_2["hist"].T
+    #   axes = h_map.getAxis()
+
+    #   print("Este es el het del EYEGESTURES: ",h_map)
+    #   print("Axes _ Gestures", axes)
+    out_path = os.path.join(os.path.dirname(__file__), "saved", "output")
+    png_path = save_heatmap_png(heat_2 ,out_path)
+    print(png_path)
     print("Tracking stopped.")
+    stats = {"csv": csv_path, "samples": int(len(xs)), "total_time_s": float(total_time), "top_regions": top_regions, "png": png_path}
+    save_report_pdf(out_path, png_path, stats)
+
+    clb = gestures.clb[context_tag] """
+    sys.exit(0)
 # ...existing code...
+
+
+
+
+""" 
+(array([  0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0., 464.]), 
+    array([  0.,   0., 0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   1.,   4.,   1.,   3.,   3.,
+         1.,   1.,   1.,   1.,   1.,   1.,   0.,   1.,   0.,   1.,   0.,
+         1.,   1.,   0.,   1.,   0.,   0.,   2.,   0.,   0.,   1.,   1.,
+         3.,  10.,   4.,  10.,   9.,  13.,  10.,  18.,  14.,  15.,  19.,
+         6.,   4.,  12.,   3.,   9.,   5.,   4.,   4., 265.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,
+         0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.,   0.]))
+        [[-463.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0], 
+        [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, -264.0, -3.0,
+        -3.0, -4.0, -8.0, -2.0, -11.0, -3.0, -5.0, -18.0, -14.0, -13.0, -17.0, -9.0, -12.0, -8.0,
+        -9.0, -3.0, -9.0, -2.0, 0.0, 0.0, 1.0, 1.0, -1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0,
+            1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -2.0, -2.0, 0.0, -3.0, 0.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                1.0, 1.0]]
+"""
