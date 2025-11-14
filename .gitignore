@@ -11,7 +11,9 @@ dist/*
 *.csv
 data/*
 .env
-
+*.png
+*.bin
+*.pdf
 ## Guarda tus propios datos aquí, tu calibración debe de ser unica :)
 Windows/src/saved/*
 !Windows/src/saved/output/
