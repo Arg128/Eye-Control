@@ -33,15 +33,6 @@ context_tag = "eye_Tracker_v3"
 screen_w = int(sys.argv[1:][0])
 screen_h = int(sys.argv[1:][1])
 
-# face check: run and wait (use sys.executable so the same Python is used)
-face_check_path = os.path.join(os.path.dirname(__file__), "face_check.py")
-try:
-    cp = subprocess.run([sys.executable, face_check_path, "--show", "--frames", "40", "--threshold", "0.9"], check=False)
-    if cp.returncode != 0:
-        print("Face check returned non-zero. Continuing but warning: detection may be unstable.")
-except Exception as e:
-    print("Could not run face_check.py:", e)
-
 """ # model path
 MODEL_PATH = os.path.join(os.path.dirname(__file__), ".pkl", "calibration_model_v3.pkl")
 if not os.path.exists(MODEL_PATH):
