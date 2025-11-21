@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EyeGestures Minigames - Control con tu Mirada</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../example/eyegestures.css">
+    <script src="https://www.lactame.com/lib/ml/6.0.0/ml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+</head>
+<body>
+    <!-- Video oculto para EyeGestures -->
+    <video id="video" width="640" height="480" autoplay style="display: none;"></video>
+
+    <!-- Panel de estadísticas de tiempo y atención -->
+    <div id="stats-panel">
+        <div class="stat-item">
+            <span class="stat-label">⏱️ Tiempo en página:</span>
+            <span class="stat-value" id="time-on-page">0s</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">👁️ Estado:</span>
+            <span class="stat-value" id="attention-status">Mirando</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">📊 Tiempo mirando:</span>
+            <span class="stat-value" id="time-looking">0s</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">😔 Tiempo fuera:</span>
+            <span class="stat-value" id="time-away">0s</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">📈 % Atención:</span>
+            <span class="stat-value" id="attention-percent">100%</span>
+        </div>
+    </div>
+
+    <!-- Menú principal -->
+    <div id="main-menu" class="container">
+        <h1 class="title">🎮 EyeGestures Minigames</h1>
+        <p class="subtitle">Controla los juegos con tu mirada</p>
+
+        <div id="status" class="status-message">✅ Listo para comenzar</div>
+        
+        <div id="camera-info" class="camera-info">
+            <p id="camera-message">💡 <strong>Consejo:</strong> Prueba tu cámara antes de jugar</p>
+            <button id="test-camera-btn" onclick="testCamera()" class="test-btn">🔍 Probar Cámara</button>
+            <p style="font-size: 0.9rem; color: #666; margin-top: 10px;">
+                La cámara se activará automáticamente al seleccionar un juego
+            </p>
+            <p id="camera-status" style="font-size: 0.9rem; margin-top: 10px; font-weight: bold;"></p>
+        </div>
+
+        <div class="games-grid">
+            <div class="game-card" data-game="pong">
+                <div class="game-icon">🏓</div>
+                <h3>Eye Pong</h3>
+                <p>Mueve la paleta con tu mirada</p>
+                <button class="play-btn" onclick="startGame('pong')">Jugar</button>
+            </div>
+
+            <div class="game-card" data-game="target">
+                <div class="game-icon">🎯</div>
+                <h3>Eye Target</h3>
+                <p>Dispara a los objetivos mirándolos</p>
+                <button class="play-btn" onclick="startGame('target')">Jugar</button>
+            </div>
+
+            <div class="game-card" data-game="snake">
+                <div class="game-icon">🐍</div>
+                <h3>Eye Snake</h3>
+                <p>Controla la serpiente con tu mirada</p>
+                <button class="play-btn" onclick="startGame('snake')">Jugar</button>
+            </div>
+
+            <div class="game-card" data-game="collect">
+                <div class="game-icon">⭐</div>
+                <h3>Eye Collect</h3>
+                <p>Recoge estrellas con tu mirada</p>
+                <button class="play-btn" onclick="startGame('collect')">Jugar</button>
+            </div>
+        </div>
+
+        <div class="calibration-info">
+            <p>⚠️ Necesitas calibrar tu mirada antes de jugar</p>
+        </div>
+    </div>
+
+    <!-- Canvas para los juegos -->
+    <div id="game-container" style="display: none;">
+        <div id="game-header">
+            <button id="back-btn" onclick="backToMenu()">← Volver al Menú</button>
+            <h2 id="game-title"></h2>
+            <div id="game-score">Puntuación: <span id="score">0</span></div>
+        </div>
+        <canvas id="game-canvas"></canvas>
+        <div id="game-info"></div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- No cargar calibration.js - ya está incluido en eyegestures-browser.js -->
+    <script src="eyegestures-browser.js"></script>
+
+    <script src="gazeFilter.js"></script>
+    
+    <script src="gazeTrail.js"></script>
+    <script src="readingDetector.js"></script>
+
+    <script src="improvedCalibration.js"></script>
+
+    <script src="timeTracker.js"></script>
+    <script src="games/pong.js"></script>
+    <script src="games/target.js"></script>
+    <script src="games/snake.js"></script>
+    <script src="games/collect.js"></script>
+    <script src="main.js"></script>
+    <script src="justTrackWithAMouse.js"></script>
+</body>
+</html>

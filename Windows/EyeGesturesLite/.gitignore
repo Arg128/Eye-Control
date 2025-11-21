@@ -1,0 +1,55 @@
+# Dependencias
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Archivos de prueba y cobertura
+coverage/
+*.cover
+.nyc_output/
+.cache/
+
+# Archivos de construcción
+dist/
+build/
+*.min.js.map
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archivos de IDE y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Variables de entorno
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+
+# Archivos temporales
+tmp/
+temp/
+*.tmp
+
+# Archivos de depuración
+.vscode/launch.json
+chrome-debug/
