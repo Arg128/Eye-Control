@@ -30,8 +30,14 @@ else:
         HEIGHT = moni.height
         break
 
-ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets")
-ASSETS_DIR2 = os.path.join(os.path.dirname(__file__), "assets")
+## Check if running as a frozen exe or a standard script
+if getattr(sys, 'frozen', False):
+    RUNNING_PATH = os.path.dirname(sys.executable)
+else:
+    RUNNING_PATH = os.path.dirname(__file__)
+
+ASSETS_DIR = os.path.join(RUNNING_PATH, "..", "assets")
+ASSETS_DIR2 = os.path.join(RUNNING_PATH, "assets")
 points = 0
 
 def run_subprocess2(path, argv=None, version="3.11"):
@@ -86,6 +92,10 @@ def run_subprocess(path, argv=None, python=True, wait=False):
 
 
 class EyeControlApp_TK:
+
+    def _reset(self):
+        self.master.destroy()
+        self = EyeControlApp_TK()
 
     def __init__(self):
         self.settings = Settings()
@@ -218,7 +228,8 @@ class EyeControlApp_TK:
         y = math.floor((self.h - (self.h)*0.14))
         win.geometry(f"{x}x{y}")
         win.title("Calibración - Opciones")
-
+        #   crg canll
+        win.withdraw()
         elem_1 = ttk.Label(win,text="Aviso:")
         info = tk.Text(win, width=50, height=7, wrap="word")
         info.insert('1.0', '1) Asegúrate de estar en un entorno bien iluminado\n' \
@@ -228,6 +239,7 @@ class EyeControlApp_TK:
         '\n\nFinalmente teclé \'CTRL\' para salir y mire fijamente la camara para escanear ultimamente su rostro.')
         self._dictio.add_object(info)
         elem_2 = ttk.Label(win,text="Número de puntos:")
+        
         self._dictio.add_object(elem_1)
         self._dictio.add_object(elem_2)
 
@@ -258,22 +270,24 @@ class EyeControlApp_TK:
             self.master.after(100, self._load_window(self._dictio.translate_acync))
         pross = None
         if self.settings.check_face:
-            pross = subprocess.Popen(["py", "-3.11", os.path.join(os.path.dirname(__file__),"face_check.py"), "--show", "--frames","40","--threshold","0.9"], creationflags=subprocess.CREATE_NEW_CONSOLE)
+            pross = subprocess.Popen(["py", "-3.11", os.path.join(RUNNING_PATH,"face_check.py"), "--show", "--frames","40","--threshold","0.9"], creationflags=subprocess.CREATE_NEW_CONSOLE)
 
         if pross is not None and pross.wait() == 0 or not self.settings.check_face:
             elem_1.pack(padx=7, pady=7)
             info.pack(padx=7, pady=7)
-            elem_2.pack(padx=7, pady=7)
+            elem_2.pack(padx=7, pady=7, side=tk.LEFT)
             self.pointsObject.pack(padx=7, pady=10)
-            elem_3.pack(padx=7, pady=7)
+            elem_3.pack(padx=7, pady=7, side=tk.LEFT)
             check_box.pack(padx=7, pady=7)
-            elem_4.pack(padx=7, pady=7)
+            elem_4.pack(padx=7, pady=7, side=tk.LEFT)
             option_menu.pack(padx=7, pady=7)
             btn_start_calibration.pack(padx=10, pady=(0,10))
             print("Face check passed. You can proceed to calibration.")
-
-            self.master.wait_window(win)
-
+                
+            win.deiconify()
+            win.focus_force()
+            self.master.wait_window(win)    #Avrg
+            
             self.isWindowEnable = False
             win.mainloop()
             return win
@@ -301,7 +315,7 @@ class EyeControlApp_TK:
 
     def play(self, ver="V2"):
         # face check: run and wait (use sys.executable so the same Python is used)
-        face_check_path = os.path.join(os.path.dirname(__file__), "face_check.py")
+        face_check_path = os.path.join(RUNNING_PATH, "face_check.py")
         try:
             if not self.settings.check_face:
                 return
@@ -311,9 +325,9 @@ class EyeControlApp_TK:
         except Exception as e:
             print("Could not run face_check.py:", e)
         if ver == "V2":
-            run_subprocess(os.path.join(os.path.dirname(__file__),"V2_Tracking.py"), [str(WIDTH), str(HEIGHT)])
+            run_subprocess(os.path.join(RUNNING_PATH,"V2_Tracking.py"), [str(WIDTH), str(HEIGHT)])
         elif ver == "V3":
-            run_subprocess(os.path.join(os.path.dirname(__file__),"V3_Tracking_2.1.py"), [str(WIDTH), str(HEIGHT)])
+            run_subprocess(os.path.join(RUNNING_PATH,"V3_Tracking_2.1.py"), [str(WIDTH), str(HEIGHT)])
         else:
             print("WTH")
         
@@ -337,7 +351,7 @@ class EyeControlApp_TK:
             if not ver == "V2" and not ver == "V3":
                 raise NameError().add_note("No version alvariable to: " + ver)
         
-            run_subprocess(os.path.join(os.path.dirname(__file__), f"{ver}_Windows_Calibrate.py"), [str(points), str(bool), str(radio), str(WIDTH), str(HEIGHT)])
+            run_subprocess(os.path.join(RUNNING_PATH, f"{ver}_Windows_Calibrate.py"), [str(points), str(bool), str(radio), str(WIDTH), str(HEIGHT)])
             
     def check_face(self):
         pass
@@ -349,7 +363,7 @@ class EyeControlApp_TK:
         then opens the folder so the user can download PNG/PDF.
         """
         
-        stats_dir = os.path.join(os.path.dirname(__file__))
+        stats_dir = os.path.join(RUNNING_PATH)
         print(stats_dir)
         #   os.makedirs(stats_dir, exist_ok=True)
         script_path = os.path.join(stats_dir, "generate_stats.py")
@@ -374,7 +388,7 @@ class EyeControlApp_TK:
         """
         SHOW DATA INTO EYE GESTURES APLICATION.
         """
-        stats_dir = os.path.join(os.path.dirname(__file__), "saved", "output")
+        stats_dir = os.path.join(RUNNING_PATH, "saved", "output")
         #   os.makedirs(stats_dir, exist_ok=True)
         try:
             subprocess.Popen(["explorer", stats_dir])
@@ -437,7 +451,7 @@ class EyeControlApp_TK:
         print(server_dir)
         #   os.chdir('EyeGesturesLite')
         os.path.abspath(os.curdir)
-        os.chdir(os.path.dirname(__file__))
+        os.chdir(RUNNING_PATH)
         os.chdir('..')
         print(os.getcwd())
         os.chdir(os.path.join(os.path.abspath(os.curdir), 'EyeGesturesLite'))
@@ -538,47 +552,47 @@ class EyeControlApp_TK:
         #RECUERDA, SON LOS VALORES QUE TENEMOS QUE IMPORTAR
         #NO LOS TKK
         #   Running options
-        elem_1 = ttk.Label(win,text="Opciones de Arranque: ")
+        elem_1 = ttk.Label(win,text="Opciones de Arranque: ", font=("Franklin Gothic Medium Cond", 14))
         elem_1.pack(padx=7,pady=7)
         self._dictio.add_object(elem_1)
         
-        elem_2 = ttk.Label(win,text="Iniciar una nueva calibración: ")
+        elem_2 = ttk.Label(win,text="Iniciar una nueva calibración: ", justify=tk.LEFT)
         self._dictio.add_object(elem_2)
         nesstedCalibrationVar = tk.BooleanVar(value=True)
         elem_2.pack(padx=7,pady=7)
         ttk.Checkbutton(win, variable=nesstedCalibrationVar).pack(padx=7,pady=7)
 
-        elem_3 = ttk.Label(win,text="Comprobar rostro al probar control: ")
+        elem_3 = ttk.Label(win,text="Comprobar rostro al probar control: ",  justify=tk.LEFT)
         self._dictio.add_object(elem_3)
         newCalibrationVar = tk.BooleanVar(value=True)
         elem_3.pack(padx=7,pady=7)
         ttk.Checkbutton(win, variable=newCalibrationVar).pack(padx=7,pady=7)
 
-        elem_4 = ttk.Label(win,text="Puntos de Calibración: ")
+        elem_4 = ttk.Label(win,text="Puntos de Calibración: ",  justify=tk.LEFT)
         self._dictio.add_object(elem_4)
         newCalibrationPoints = tk.IntVar(value=20)
         elem_4.pack(padx=7,pady=7)
         ttk.Entry(win, textvariable=newCalibrationPoints).pack(padx=7,pady=7)
 
         #   Visual customization settings
-        elem_5 = ttk.Label(win,text="Ajustes Visuales: ")
+        elem_5 = ttk.Label(win,text="Ajustes Visuales: ", font=("Franklin Gothic Medium Cond", 14))
         elem_5.pack(padx=7,pady=7)
         self._dictio.add_object(elem_5)
 
-        elem_6 = ttk.Label(win,text="Traducción Activada: ")
+        elem_6 = ttk.Label(win,text="Traducción Activada: ",  justify=tk.LEFT)
         elem_6.pack(padx=7,pady=7)
         translateVar = tk.BooleanVar(value=True)
         ttk.Checkbutton(win, variable=translateVar).pack(padx=7,pady=7)
         self._dictio.add_object(elem_6)
 
-        elem_7 = ttk.Label(win,text="Traducir al lenguaje: ")
+        elem_7 = ttk.Label(win,text="Traducir al lenguaje: ", justify=tk.LEFT)
         elem_7.pack(padx=7,pady=7)
         languages = self._dictio.translator.get_supported_languages()
         selected_language = StringVar(value=languages[0])
         ttk.OptionMenu(win, selected_language, *languages).pack(padx=7,pady=7)
         self._dictio.add_object(elem_7)
 
-        elem_8 = ttk.Label(win,text="Color de fondo: ")
+        elem_8 = ttk.Label(win,text="Color de fondo: ", justify=tk.LEFT)
         elem_8.pack(padx=7,pady=7)
         colors = ["red", "blue", "lightblue", "cyan", "lemongreen", "green", "yellow", "black"]
         selected_color = StringVar(value=colors[2])
@@ -597,13 +611,14 @@ class EyeControlApp_TK:
             print(status)
             if status:
                 tk.messagebox.showinfo("Status", OK_MESSAGE)
+                self._reset()
             else:
                 tk.messagebox.showerror("Status", ERROR_MESSAGE)
 
         ok_button = ttk.Button(win, text="Guardar los cambios", command=save_these_things)
         self._dictio.add_object(ok_button)
         ok_button.pack(padx=7,pady=7)
-        OK_MESSAGE = "El guardado se realizó con exito"
+        OK_MESSAGE = "El guardado se realizó con exito, reiniciando Eye-Motion"
         ERROR_MESSAGE = "Ups. Algo ocurrio mal, verifique el archivo 'settings.py'"
         self._dictio.add_object(elem_8)
 

@@ -1,7 +1,12 @@
+import sys
 import os
 import pickle
-
-STORAGE_PATH = os.path.join(os.path.dirname(__file__), "saved", "config.bin")
+## Check if running as a frozen exe or a standard script
+if getattr(sys, 'frozen', False):
+    RUNNING_PATH = os.path.dirname(sys.executable)
+else:
+    RUNNING_PATH = os.path.dirname(__file__)
+STORAGE_PATH = os.path.abspath(os.path.join(RUNNING_PATH, "..", "saved", "config.bin"))
 class Settings():
     def __init__(self):
         #   Running options
@@ -21,7 +26,7 @@ class Settings():
         data_bytes = bytes(data)
 
         # atomic write with flush+fsync
-        with open(tmp_path, "wb") as f:
+        with open(tmp_path,"wb") as f:
             f.write(data_bytes)
             f.flush()   #Writing buffering data to disk
             os.fsync(f.fileno())    #Ensure data its writing to disk

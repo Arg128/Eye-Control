@@ -14,9 +14,9 @@ try:
     from scipy.ndimage import gaussian_filter
 except Exception:
     gaussian_filter = None
-
+from . import RUNNING_PATH
 # Config: paths (ajusta si necesitas)
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+PROJECT_ROOT = os.path.abspath(RUNNING_PATH)
 RECORDINGS_DIR = os.path.join(PROJECT_ROOT, "saved")    # busca CSVs aquí
 OUT_DIR = os.path.join(RECORDINGS_DIR, "output")
 #   os.makedirs(OUT_DIR, exist_ok=True)
